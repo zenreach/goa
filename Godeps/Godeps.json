@@ -1,0 +1,28 @@
+{
+	"ImportPath": "github.com/raphael/goa",
+	"GoVersion": "go1.3.3",
+	"Deps": [
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "14f550f51af52180c2eefed15e5fd18d63c0a64a"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Rev": "e444e69cbd2e2e3e0749a2f3c717cec491552bbf"
+		},
+		{
+			"ImportPath": "github.com/olekukonko/tablewriter",
+			"Rev": "37f85ed61c00a85092550bf43fc51087a10475fd"
+		},
+		{
+			"ImportPath": "github.com/onsi/ginkgo",
+			"Comment": "v1.1.0-25-g9c7cbc4",
+			"Rev": "9c7cbc493e1b6f86b6c67d4538c1f42b2ac85d4f"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega",
+			"Comment": "v1.0-23-g2cd6d99",
+			"Rev": "2cd6d99ccf3ac7ae8398d8296429161bf7061ae2"
+		}
+	]
+}
