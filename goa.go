@@ -77,7 +77,11 @@ func (app *app) PrintRoutes() {
 
 // validateResource validates resource definition recursively
 func validateResource(resource *Resource) error {
-	return resource.MediaType.Model.Validate()
+	mediaType := &resource.MediaType
+	if mediaType.IsEmpty() {
+		return nil
+	}
+	return mediaType.Model.Validate()
 }
 
 // finalizeResource links child action and response definitions back to resource definition

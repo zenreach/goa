@@ -6,17 +6,24 @@ import "mime"
 import "strings"
 import "net/http"
 
+// Response header definitions, map of definitions keyed by header name. There are two kinds of definitions:
+//   - Regexp definitions consist of strings starting and ending with slash ("/").
+//   - Exact matches consist of strings that do not start or do not end with slash (or neither).
+// All action responses are validated against provided header defintions, at least one of the response headers must
+// match each definition.
+type Headers map[string]string
+
 // Response definitions dictate the set of valid responses a given action may return.
 // A response definition describes the response status code, media type and compulsory headers.
 // The 'Location' header is called out as it is a common header returned by actions that create resources
 // A multipart response definition may also describe compulsory headers for its parts.
 type Response struct {
-	Description string            // Description used by documentation
-	Status      int               // Response status code
-	MediaType   MediaType         // Response media type if any
-	Location    string            // Response 'Location' header validation, enclose value in / for regexp behavior
-	Headers     map[string]string // Response header validations, enclose values in / for regexp behavior
-	Parts       *Response         // Response part definitions if any
+	Description string    // Description used by documentation
+	Status      int       // Response status code
+	MediaType   MediaType // Response media type if any
+	Location    string    // Response 'Location' header validation, enclose value in / for regexp behavior
+	Headers     Headers   // Response header validations, enclose values in / for regexp behavior
+	Parts       *Response // Response part definitions if any
 
 	// Internal fields
 

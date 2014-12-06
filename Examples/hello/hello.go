@@ -1,5 +1,16 @@
 // hello world example
 // Shows basic usage of goa
+//
+// Run:
+//   make run
+// Index:
+//   curl http://localhost:8080/api/hello -H x-api-version:1.0
+// Show:
+//  curl http://localhost:8080/api/hello/0 -H x-api-version:1.0
+// Update:
+//   curl -X PUT -d '{"value":"foo"}' http://localhost:8080/api/hello/0 -H x-api-version:1.0  -H Content-Type:application/json
+// Delete:
+//   curl -X DELETE http://localhost:8080/api/hello/0
 package main
 
 import (
