@@ -24,7 +24,7 @@ var HelloResource = Resource{
 			Params: Attributes{
 				"id": Attribute{Type: Integer, Required: true}, // Inherits other fields from media type attribute
 			},
-			Responses: Responses{"ok": Http.Ok(), "not_found": Http.NotFound()},
+			Responses: Responses{"ok": Http.Ok(), "notFound": Http.NotFound()},
 		},
 
 		"update": Action{
@@ -40,7 +40,7 @@ var HelloResource = Resource{
 					Required:    true,
 				},
 			},
-			Responses: Responses{"no_content": Http.NoContent(), "not_found": Http.NotFound()},
+			Responses: Responses{"noContent": Http.NoContent(), "notFound": Http.NotFound()},
 		},
 
 		"delete": Action{
@@ -49,7 +49,7 @@ var HelloResource = Resource{
 			Params: Attributes{
 				"id": Attribute{Type: Integer, Required: true},
 			},
-			Responses: Responses{"no_content": Http.NoContent(), "not_found": Http.NotFound()},
+			Responses: Responses{"noContent": Http.NoContent(), "notFound": Http.NotFound()},
 		},
 	},
 }

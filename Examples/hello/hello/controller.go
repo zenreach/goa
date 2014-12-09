@@ -30,7 +30,7 @@ func (h *Hello) Show(r goa.Request) {
 		}
 	}
 	if !found {
-		r.RespondEmpty("not_found")
+		r.RespondEmpty("notFound")
 	}
 }
 
@@ -48,7 +48,7 @@ func (h *Hello) Update(r goa.Request) {
 	if !found {
 		greetings = append(greetings, greeting{id, r.PayloadString("value")})
 	}
-	r.RespondEmpty("no_content")
+	r.RespondEmpty("noContent")
 }
 
 // Delete
@@ -60,11 +60,11 @@ func (h *Hello) Delete(r goa.Request) {
 			greetings[i] = greetings[len(greetings)-1]
 			greetings = greetings[0 : len(greetings)-1]
 			found = true
-			r.RespondEmpty("no_content")
+			r.RespondEmpty("noContent")
 			break
 		}
 	}
 	if !found {
-		r.RespondEmpty("not_found")
+		r.RespondEmpty("notFound")
 	}
 }

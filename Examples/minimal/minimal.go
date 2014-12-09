@@ -24,7 +24,7 @@ var resource = Resource{
 				"value": Attribute{Type: String, Required: true},
 			},
 			Responses: Responses{
-				"default": Response{Status: 200}, // Only one response code possible
+				"ok": Response{Status: 200}, // Only one response code possible
 			},
 		},
 	},
@@ -35,7 +35,7 @@ type EchoController struct{}
 
 // Action implementation
 func (c *EchoController) Echo(r Request) {
-	r.RespondWithBody("default", r.ParamString("value")) // Send default response, use "value" param as response body
+	r.RespondWithBody("ok", r.ParamString("value")) // Send default response, use "value" param as response body
 }
 
 // Entry point

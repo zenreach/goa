@@ -85,13 +85,13 @@ type Attribute struct {
 	DefaultValue interface{} // Attribute default value (if any), underlying (go) type is dictated by `Type`
 
 	// - Validation rules -
-	Required      bool          // Whether the attribute is required when loading a value of this type
-	Regexp        string        // Regular expression used to validate string values
-	MinValue      interface{}   // Minimum value used to validate integer, float and time values
-	MaxValue      interface{}   // Maximum value used to validate integer, float and time values
-	MinLength     int           // Minimum value length used to validate strings and collections
-	MaxLength     int           // Maximum value length used to validate strings and collections
-	AllowedValues []interface{} // White list of possible values, underlying type is dictated by Type
+	Required      bool        // Whether the attribute is required when loading a value of this type
+	Regexp        string      // Regular expression used to validate string values
+	MinValue      interface{} // Minimum value used to validate integer, float and time values
+	MaxValue      interface{} // Maximum value used to validate integer, float and time values
+	MinLength     int         // Minimum value length used to validate strings and collections
+	MaxLength     int         // Maximum value length used to validate strings and collections
+	AllowedValues interface{} // White list of possible values, underlying type is an array
 }
 
 // Validate checks that the given attribute struct is properly initialized
@@ -479,18 +479,25 @@ func (c Composite) Load(value interface{}) (interface{}, error) {
 				errors = append(errors, &IncompatibleValue{value, "Composite", fmt.Sprintf("could not load attribute %s: %s", n, err.Error())})
 				continue
 			}
-			if len(att.AllowedValues) > 0 {
-				ok = false
-				for allowed := range att.AllowedValues {
-					if allowed == val {
+			allowedValues := att.AllowedValues
+			if allowedValues != nil {
+				valuesType := reflect.TypeOf(allowedValues).Kind()
+				if valuesType != reflect.Slice && valuesType != reflect.Array {
+					errors = append(errors, fmt.Errorf("Invalid 'AllowedValues' field, value must be an array but value type is %s", fmt.Sprintf("%s", valuesType)))
+					continue
+				}
+				allowed := reflect.ValueOf(allowedValues)
+				ok = (allowed.Len() == 0)
+				for i := 0; i < allowed.Len(); i++ {
+					if allowed.Index(i).Interface() == val {
 						ok = true
 						break
 					}
 				}
 				if !ok {
 					var values []string
-					for allowed := range att.AllowedValues {
-						values = append(values, fmt.Sprintf("%v", allowed))
+					for i := 0; i < allowed.Len(); i++ {
+						values = append(values, fmt.Sprintf("%v", allowed.Index(i).Interface()))
 					}
 					msg := fmt.Sprintf("value given for attribute %s does not match any of the allowed values (given value was %v, allowed values are %v)",
 						n, val, strings.Join(values, ", "))
