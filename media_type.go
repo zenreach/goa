@@ -6,7 +6,15 @@ import (
 
 // Media types are used to define the content of controller action responses. They provide the API clients with a crisp
 // definition of what an API returns. Conceptually media types define the "views" of resources, the media type content is
-// described using goa types (see attribute.go), a valid definition of a media type could be:
+// described using goa types (see attribute.go). The media type definition also defines the go data structure used to
+// handle the corresponding data in the application, a valid definition of a media type could be:
+//
+//     // Article data structure
+//     type Article struct {
+//         Href    string // API href
+//         Title   string // Title
+//         Content string // Content
+//     }
 //
 //     // Show blog article response media type
 //     articleMediaType := MediaType{
@@ -15,22 +23,26 @@ import (
 //
 //        Description: "A blog article",
 //
-//         Content: Attributes{    // An article has an href, a title and a content
-//            "href": Attribute{
-//                Type:        String,
-//                Description: "Article href",
-//                MinLength:   4,
-//            },
-//            "title": Attribute{
-//                Type:        String,
-//                Description: "Article title",
-//                MinLength:   20,
-//                MaxLength:   100,
-//            },
-//            "content": Attribute{
-//                Type:        String,
-//                Description: "Article content",
-//                MinLength:   100,
+//        Model: Model {
+//            Blueprint: Article{},
+//
+//            Attributes: Attributes{    // An article has an href, a title and a content
+//                "href": Attribute{
+//                    Type:        String,
+//                    Description: "Article href",
+//                    MinLength:   4,
+//                },
+//                "title": Attribute{
+//                    Type:        String,
+//                    Description: "Article title",
+//                    MinLength:   20,
+//                    MaxLength:   100,
+//                },
+//                "content": Attribute{
+//                    Type:        String,
+//                    Description: "Article content",
+//                    MinLength:   100,
+//                 },
 //            },
 //        },
 //
@@ -55,30 +67,35 @@ import (
 //
 // Extending the example above with links:
 //
+//     // Article media type
 //     articleMediaType := MediaType{
 //
 //        Identifier: "application/vnd.blogapp.article+json",
 //
 //        Description: "A blog article",
 //
-//         Content: Attributes{    // An article has an href, a title and a content
-//            "href": Attribute{
-//                Type:        String,
-//                Description: "Article href",
-//                MinLength:    4,
+//        Model: Model{
+//            Blueprint: Article{},
+//
+//            Attributes:{  // An article has an href, a title and a content
+//                "href": Attribute{
+//                    Type:        String,
+//                    Description: "Article href",
+//                    MinLength:    4,
+//                },
+//                "title": Attribute{
+//                    Type:        String,
+//                    Description: "Article title",
+//                    MinLength:   20,
+//                    MaxLength:   100,
+//                },
+//                "content": Attribute{
+//                    Type:        String,
+//                    Description: "Article content",
+//                    MinLength:   100,
+//                },
 //            },
-//            "title": Attribute{
-//                Type:        String,
-//                Description: "Article title",
-//                MinLength:   20,
-//                MaxLength:   100,
-//            },
-//            "content": Attribute{
-//                Type:        String,
-//                Description: "Article content",
-//                MinLength:   100,
-//            },
-//         },
+//        },
 //
 //        Views: Views{    // An article can be linked to (defines a "link" view)
 //            "default": View{
@@ -100,23 +117,33 @@ import (
 //
 //     // The blog media type contains a collection of articles, the default view contains links to articles and the
 //     // extended view embeds the article.
+//
+//     type Blog struct {
+//         Name     string
+//         Articles []*Article
+//     }
+//
 //     var blogMediaType = MediaType{
 //
 //        Identifier: "application/vnd.blogapp.blog+json",
 //
 //        Description: "A blog",
 //
-//        Attributes: Attributes{    // A blog has a name and articles
-//            "name": Attribute{
-//                Type:        String,
-//                Description: "Blog name",
-//            },
-//            "articles": Attribute{
-//                Type:        CollectionOf(articleMediaType),
-//                Description: "Blog articles",
-//            },
-//            "links": Attributes{        // A blog has a "articles" link
-//                "articles": Attribute{} // No need to redefine the "articles" attribute
+//        Model: {
+//            Blueprint: Blog{},
+//
+//            Attributes: Attributes{    // A blog has a name and articles
+//                "name": Attribute{
+//                    Type:        String,
+//                    Description: "Blog name",
+//                },
+//                "articles": Attribute{
+//                    Type:        CollectionOf(articleMediaType),
+//                    Description: "Blog articles",
+//                },
+//                "links": Attributes{        // A blog has a "articles" link
+//                    "articles": Attribute{} // No need to redefine the "articles" attribute
+//                },
 //            },
 //        },
 //

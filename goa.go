@@ -12,7 +12,7 @@ import (
 
 // A goa application fundamentally consists of a router and a set of controllers and resource definitions that get
 // "mounted" under given paths (URLs). The router dispatches incoming requests to the appropriate controller.
-// Goa applications are created via the `NewApplication()` factory method.
+// Goa applications are created via the NewApplication() factory method.
 type app struct {
 	router      *mux.Router
 	controllers map[string]Controller
