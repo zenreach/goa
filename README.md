@@ -243,13 +243,13 @@ type Attribute struct {
 	DefaultValue interface{} // Attribute default value (if any), underlying (go) type is dictated by `Type`
 
 	// - Validation rules -
-	Required      bool          // Whether the attribute is required when loading a value of this type
-	Regexp        string        // Regular expression used to validate string values
-	MinValue      interface{}   // Minimum value used to validate integer, float and time values
-	MaxValue      interface{}   // Maximum value used to validate integer, float and time values
-	MinLength     int           // Minimum value length used to validate strings and collections
-	MaxLength     int           // Maximum value length used to validate strings and collections
-	AllowedValues []interface{} // White list of possible values, underlying type is dictated by Type
+	Required      bool        // Whether the attribute is required when loading a value of this type
+	Regexp        string      // Regular expression used to validate string values
+	MinValue      interface{} // Minimum value used to validate integer, float and time values
+	MaxValue      interface{} // Maximum value used to validate integer, float and time values
+	MinLength     int         // Minimum value length used to validate strings and collections
+	MaxLength     int         // Maximum value length used to validate strings and collections
+	AllowedValues interface{} // White list of possible values, underlying type is an array
 }
 ```
 
