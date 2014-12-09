@@ -115,6 +115,13 @@ var Time = basic(TTime)
 ```
 Time basic type
 
+#### func  Multi
+
+```go
+func Multi(routes ...singleRoute) multiRoute
+```
+Multi creates a multi-route from the given list of routes
+
 #### type Action
 
 ```go
@@ -270,7 +277,7 @@ be used to validate that a go structure matches an attribute definition.
 `Load()` can then be called multiple times to load values into instances of that
 structure.
 
-Validation rules apply whenever a value is loaded via the Load() method. They
+Validation rules apply whenever a value is loaded via the `Load()` method. They
 specify whether a field is required, regular expressions (for string
 attributes), minimum and maximum length (strings and collections) or minimum and
 maximum values (for integer, float and time attributes).
@@ -401,8 +408,8 @@ func (c Composite) Load(value interface{}) (interface{}, error)
 ```
 Load coerces the given value into a map[string]interface{} where the map values
 have all been coerced recursively. `value` must either be a map with string keys
-or a string containing a JSON representation of a map. Load also applies any
-validation rule defined in the composite type attributes. Returns nil and an
+or to a string containing a JSON representation of a map. Load also applies any
+validation rule defined in the composite type attributes. Returns `nil` and an
 error if coercion or validation fails.
 
 #### type Controller
@@ -888,7 +895,7 @@ Example:
     }
 
     // Load data into application data structures
-    if raw, err := definition.Load(data); err == nil {
+    if raw, err := definition.Load(&data); err == nil {
         employee := raw.(*Employee)
         fmt.Printf("Employee: %+v\n", *employee)
     } else {
@@ -900,28 +907,6 @@ Example:
 ```go
 func (m *Model) Validate() error
 ```
-
-#### type MultiRoute
-
-```go
-type MultiRoute []SingleRoute
-```
-
-A multi-route is an array of routes
-
-#### func  Multi
-
-```go
-func Multi(routes ...SingleRoute) MultiRoute
-```
-Multi creates a multi-route from the given list of routes
-
-#### func (MultiRoute) GetRawRoutes
-
-```go
-func (m MultiRoute) GetRawRoutes() [][]string
-```
-GetRawRoutes returns the list of pairs of HTTP verb and path for the multi-route
 
 #### type Request
 
@@ -1084,33 +1069,26 @@ type Route interface {
 
 Interface implemented by action route
 
-#### func  CONNECT
-
-```go
-func CONNECT(path string) Route
-```
-CONNECT creates a route with OPTIONS verb and given path
-
 #### func  DELETE
 
 ```go
 func DELETE(path string) Route
 ```
-DELETE creates a route with OPTIONS verb and given path
+DELETE creates a route with DELETE verb and given path
 
 #### func  GET
 
 ```go
 func GET(path string) Route
 ```
-GET creates a route with OPTIONS verb and given path
+GET creates a route with GET verb and given path
 
 #### func  HEAD
 
 ```go
 func HEAD(path string) Route
 ```
-HEAD creates a route with OPTIONS verb and given path
+HEAD creates a route with HEAD verb and given path
 
 #### func  OPTIONS
 
@@ -1124,28 +1102,28 @@ OPTIONS creates a route with OPTIONS verb and given path
 ```go
 func PATCH(path string) Route
 ```
-PATCH creates a route with OPTIONS verb and given path
+PATCH creates a route with PATCH verb and given path
 
 #### func  POST
 
 ```go
 func POST(path string) Route
 ```
-POST creates a route with OPTIONS verb and given path
+POST creates a route with POST verb and given path
 
 #### func  PUT
 
 ```go
 func PUT(path string) Route
 ```
-PUT creates a route with OPTIONS verb and given path
+PUT creates a route with PUT verb and given path
 
 #### func  TRACE
 
 ```go
 func TRACE(path string) Route
 ```
-TRACE creates a route with OPTIONS verb and given path
+TRACE creates a route with TRACE verb and given path
 
 #### type RouteMap
 
@@ -1169,24 +1147,6 @@ PrintRoutes prints routes to stdout
 func (m *RouteMap) WriteRoutes(writer io.Writer)
 ```
 WriteRoutes writes routes table to given io writer
-
-#### type SingleRoute
-
-```go
-type SingleRoute struct {
-	Verb httpVerb // Route HTTP verb
-	Path string   // Route path
-}
-```
-
-Route struct
-
-#### func (SingleRoute) GetRawRoutes
-
-```go
-func (r SingleRoute) GetRawRoutes() [][]string
-```
-GetRawRoutes returns the pair of HTTP verb and path for the route
 
 #### type Type
 

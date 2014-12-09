@@ -121,7 +121,8 @@ var _ = Describe("Model", func() {
 		})
 
 		It("loads data into models", func() {
-			model, _ := NewModel(attributes, Employee{})
+			model, err := NewModel(attributes, Employee{})
+			Ω(err).ShouldNot(HaveOccurred())
 			employee, err := model.Load(data)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(*(employee.(*Employee))).Should(Equal(Employee{"John", "Accountant", Address{"5779 Maley Drive", "Santa Barbara"}}))

@@ -112,7 +112,7 @@ type Responses map[string]Response
 type httpVerb string
 
 //  Route struct
-type SingleRoute struct {
+type singleRoute struct {
 	Verb httpVerb // Route HTTP verb
 	Path string   // Route path
 }
@@ -132,64 +132,59 @@ const (
 
 // OPTIONS creates a route with OPTIONS verb and given path
 func OPTIONS(path string) Route {
-	return SingleRoute{options, path}
+	return singleRoute{options, path}
 }
 
-// GET creates a route with OPTIONS verb and given path
+// GET creates a route with GET verb and given path
 func GET(path string) Route {
-	return SingleRoute{get, path}
+	return singleRoute{get, path}
 }
 
-// HEAD creates a route with OPTIONS verb and given path
+// HEAD creates a route with HEAD verb and given path
 func HEAD(path string) Route {
-	return SingleRoute{head, path}
+	return singleRoute{head, path}
 }
 
-// POST creates a route with OPTIONS verb and given path
+// POST creates a route with POST verb and given path
 func POST(path string) Route {
-	return SingleRoute{post, path}
+	return singleRoute{post, path}
 }
 
-// PUT creates a route with OPTIONS verb and given path
+// PUT creates a route with PUT verb and given path
 func PUT(path string) Route {
-	return SingleRoute{put, path}
+	return singleRoute{put, path}
 }
 
-// DELETE creates a route with OPTIONS verb and given path
+// DELETE creates a route with DELETE verb and given path
 func DELETE(path string) Route {
-	return SingleRoute{delete_, path}
+	return singleRoute{delete_, path}
 }
 
-// TRACE creates a route with OPTIONS verb and given path
+// TRACE creates a route with TRACE verb and given path
 func TRACE(path string) Route {
-	return SingleRoute{trace, path}
+	return singleRoute{trace, path}
 }
 
-// CONNECT creates a route with OPTIONS verb and given path
-func CONNECT(path string) Route {
-	return SingleRoute{connect, path}
-}
-
-// PATCH creates a route with OPTIONS verb and given path
+// PATCH creates a route with PATCH verb and given path
 func PATCH(path string) Route {
-	return SingleRoute{patch, path}
+	return singleRoute{patch, path}
 }
 
 // A multi-route is an array of routes
-type MultiRoute []SingleRoute
+type multiRoute []singleRoute
 
 // Multi creates a multi-route from the given list of routes
-func Multi(routes ...SingleRoute) MultiRoute {
-	return MultiRoute(routes)
+func Multi(routes ...singleRoute) multiRoute {
+	return multiRoute(routes)
 }
 
 // GetRawRoutes returns the pair of HTTP verb and path for the route
-func (r SingleRoute) GetRawRoutes() [][]string {
+func (r singleRoute) GetRawRoutes() [][]string {
 	return [][]string{{string(r.Verb), r.Path}}
 }
 
 // GetRawRoutes returns the list of pairs of HTTP verb and path for the multi-route
-func (m MultiRoute) GetRawRoutes() [][]string {
+func (m multiRoute) GetRawRoutes() [][]string {
 	routes := make([][]string, len(m))
 	for _, r := range m {
 		routes = append(routes, []string{string(r.Verb), r.Path})

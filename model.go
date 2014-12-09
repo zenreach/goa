@@ -93,9 +93,9 @@ func NewModel(attributes Attributes, blueprint interface{}) (*Model, error) {
 //        City   string `attribute:"city"`
 //    }
 //    type Employee struct {
-//        Name    string  `attribute:"name"`
-//        Title   string  `attribute:"title"`
-//        Address Address `attribute:"address"`
+//        Name    string   `attribute:"name"`
+//        Title   string   `attribute:"title"`
+//        Address *Address `attribute:"address"`
 //    }
 //
 //    // Model definition attributes
@@ -138,7 +138,7 @@ func NewModel(attributes Attributes, blueprint interface{}) (*Model, error) {
 //    }
 //
 //    // Load data into application data structures
-//    if raw, err := definition.Load(data); err == nil {
+//    if raw, err := definition.Load(&data); err == nil {
 //        employee := raw.(*Employee)
 //        fmt.Printf("Employee: %+v\n", *employee)
 //    } else {
@@ -153,9 +153,8 @@ func (m *Model) Load(value interface{}) (interface{}, error) {
 		return nil, err
 	}
 
-	data := val.Elem()
 	rawValue := reflect.ValueOf(raw)
-	if err = m.initData(data, rawValue, ""); err != nil {
+	if err = m.initData(val.Elem(), rawValue, ""); err != nil {
 		return nil, err
 	}
 
@@ -174,7 +173,7 @@ func (m *Model) Validate() error {
 	return nil
 }
 
-// Helper method to load data from a map (raw data) into a struct (blueprint instance)
+// Helper method to load data from a map (raw data) into a pointer to struct (blueprint instance)
 // This method is recursive, the last argument contains the current "path" to the struct field being init'ed
 func (m *Model) initData(data reflect.Value, value reflect.Value, attPrefix string) error {
 	for _, k := range value.MapKeys() {

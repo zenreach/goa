@@ -29,7 +29,7 @@ import (
 // may be used to validate that a go structure matches an attribute definition. `Load()` can then be called multiple
 // times to load values into instances of that structure.
 //
-// Validation rules apply whenever a value is loaded via the Load() method. They specify whether a field is required,
+// Validation rules apply whenever a value is loaded via the `Load()` method. They specify whether a field is required,
 // regular expressions (for string attributes), minimum and maximum length (strings and collections) or minimum and
 // maximum values (for integer, float and time attributes).
 //
@@ -70,14 +70,14 @@ import (
 //
 // The example above could represent values such as:
 //
-//  articleData := map[string]interface{}{
-//      "title": "goa, a novel go web application framework",
-//      "author": map[string]interface{}{
-//          "firstName": "Leeroy",
-//          "lastName":  "Jenkins",
-//      },
-//      "published": time.Now(),
-//  }
+//   articleData := map[string]interface{}{
+//       "title": "goa, a novel go web application framework",
+//       "author": map[string]interface{}{
+//           "firstName": "Leeroy",
+//           "lastName":  "Jenkins",
+//       },
+//       "published": time.Now(),
+//   }
 //
 type Attribute struct {
 	Type         Type        // Attribute type
@@ -440,9 +440,9 @@ func (c Composite) CanLoad(t reflect.Type, context string) error {
 }
 
 // Load coerces the given value into a map[string]interface{} where the map values have all been coerced recursively.
-// `value` must either be a map with string keys or a string containing a JSON representation of a map.
+// `value` must either be a map with string keys or to a string containing a JSON representation of a map.
 // Load also applies any validation rule defined in the composite type attributes.
-// Returns nil and an error if coercion or validation fails.
+// Returns `nil` and an error if coercion or validation fails.
 func (c Composite) Load(value interface{}) (interface{}, error) {
 	// First load from JSON if needed
 	var m map[string]interface{}
