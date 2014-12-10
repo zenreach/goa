@@ -89,8 +89,7 @@ func finalizeResource(resource *Resource) {
 	resource.pActions = make(map[string]*Action, len(resource.Actions))
 	for an, action := range resource.Actions {
 		clone := Action{action.Name, action.Description, action.Route, action.Params, action.Payload, action.Filters,
-			action.Views, action.Responses, action.Multipart, nil, nil}
-		resource.pActions[an] = &clone
+			action.Views, action.Responses, action.Multipart, nil, nil, nil, nil, nil}
 		clone.resource = resource
 		clone.Name = an
 		clone.pResponses = make(map[string]*Response, len(action.Responses))
@@ -100,6 +99,10 @@ func finalizeResource(resource *Resource) {
 			clone.pResponses[rn] = &cloneRes
 			cloneRes.resource = resource
 		}
+		clone.pParams = (*Attributes)(&action.Params)
+		clone.pPayload = (*Model)(&action.Payload)
+		clone.pFilters = (*Attributes)(&action.Filters)
+		resource.pActions[an] = &clone
 	}
 }
 

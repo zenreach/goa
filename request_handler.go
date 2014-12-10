@@ -20,11 +20,11 @@ import (
 // HTTP request object.
 //
 // The same interface also exposes methods to send the response back. There are a few ways to do this:
-//   - use `Respond()` to specify a response object. This object can be any object that implements the Response
+// - use `Respond()` to specify a response object. This object can be any object that implements the Response
 // interface.
-//   - use `RespondEmpty()`, `RespondWithBody()` or `RespondWithHeader()` to send a response given its name and content
+// - use `RespondEmpty()`, `RespondWithBody()` or `RespondWithHeader()` to send a response given its name and content
 // the name of a response must match one of the action response definition names
-//   - use `RespondInternalError()` to return an error response (status 500)
+// - use `RespondInternalError()` to return an error response (status 500)
 //
 // The Request interface also exposes a `ResponseBuilder()` method which given a response name returns an object that
 // can be used to build the corresponding response (which can then be sent using the `Respond()` method described above)
@@ -44,18 +44,15 @@ type Request interface {
 	ParamFloat(name string) float64  // Retrieve float parameter
 	ParamTime(name string) time.Time // Retrieve time parameter
 
-	Payload(name string) interface{}   // Retrieve payload attribute, requires type assertion before value can be used
-	PayloadString(name string) string  // Retrieve string payload attribute
-	PayloadInt(name string) int64      // Retrieve integer payload attribute
-	PayloadBool(name string) bool      // Retrieve boolean payload attribute
-	PayloadFloat(name string) float64  // Retrieve float payload attribute
-	PayloadTime(name string) time.Time // Retrieve time payload attribute
+	Payload() interface{} // Retrieve payload, type is pointer to blueprint struct
+
+	RawRequest() *http.Request // Underlying http request
 }
 
 // Internal request struct given to controller actions, implements Request interface
 type requestData struct {
 	responses   *map[string]*Response
-	payload     *map[string]interface{}
+	payload     interface{}
 	params      *map[string]interface{}
 	httpRequest *http.Request
 	response    ResponseData
@@ -188,42 +185,16 @@ func (r *requestData) ParamTime(name string) time.Time {
 	return res
 }
 
-//* Request payload accessor */
+/* Request payload accessor */
 
-// Payload returns the value of a given payload attribute.
-// Payload attributes are defined in the action definitions of a resource definition.
-func (r *requestData) Payload(name string) interface{} {
-	return (*r.payload)[name]
+// Payload returns a pointer to the request payload as a struct whose type is defined by the model blueprint
+func (r *requestData) Payload() interface{} {
+	return r.payload
 }
 
-// PayloadString returns the value of a given string payload attribute, see Payload() above.
-func (r *requestData) PayloadString(name string) string {
-	res, _ := (*r.payload)[name].(string)
-	return res
-}
-
-// PayloadInt returns the value of a given string payload attribute, see Payload() above.
-func (r *requestData) PayloadInt(name string) int64 {
-	res, _ := (*r.payload)[name].(int64)
-	return res
-}
-
-// PayloadBool returns the value of a given string payload attribute, see Payload() above.
-func (r *requestData) PayloadBool(name string) bool {
-	res, _ := (*r.payload)[name].(bool)
-	return res
-}
-
-// PayloadFloat returns the value of a given string payload attribute, see Payload() above.
-func (r *requestData) PayloadFloat(name string) float64 {
-	res, _ := (*r.payload)[name].(float64)
-	return res
-}
-
-// PayloadTime returns the value of a given string payload attribute, see Payload() above.
-func (r *requestData) PayloadTime(name string) time.Time {
-	res, _ := (*r.payload)[name].(time.Time)
-	return res
+// RawRequest returns the underlying http request
+func (r *requestData) RawRequest() *http.Request {
+	return r.httpRequest
 }
 
 // A request handler implements the standard http HandlerFunc method for a single controller action.
@@ -306,7 +277,7 @@ func (handler *requestHandler) respondError(w http.ResponseWriter, status int, t
 func (handler *requestHandler) loadParams(request *http.Request) (*map[string]interface{}, error) {
 	vars := mux.Vars(request)
 	params := make(map[string]interface{})
-	for name, attr := range handler.action.Params {
+	for name, attr := range *handler.action.pParams {
 		val, ok := vars[name]
 		var value interface{}
 		if !ok {
@@ -319,7 +290,7 @@ func (handler *requestHandler) loadParams(request *http.Request) (*map[string]in
 			var err error
 			value, err = attr.Type.Load(val)
 			if err != nil {
-				return nil, fmt.Errorf("Cannot coerce %v %v into a %v (%v)", reflect.TypeOf(val), val, attr.Type, err)
+				return nil, fmt.Errorf("Cannot load param '%s': %s", name, err.Error())
 			}
 		}
 		params[name] = value
@@ -328,22 +299,22 @@ func (handler *requestHandler) loadParams(request *http.Request) (*map[string]in
 }
 
 // loadPayload loads the payload attribute values from the request body and apply the validation rules defined in the
-// action definition.
-// Payload fields are defined in the action definition.
+// payload attributes of the action definition.
 // This function supports loading form encoding, multi-part form encoding and JSON encoding bodies.
-func (handler *requestHandler) loadPayload(request *http.Request) (*map[string]interface{}, error) {
+// The result is then loaded into an instance of the action payload blueprint.
+func (handler *requestHandler) loadPayload(request *http.Request) (interface{}, error) {
 	if request.ContentLength == 0 {
 		return nil, nil
 	}
 	var parsed map[string]interface{}
-	definition := handler.action
+	action := handler.action
 	contentType := request.Header.Get("Content-Type")
 	if strings.Contains(contentType, "form-urlencoded") {
 		if err := request.ParseForm(); err != nil {
 			return nil, fmt.Errorf("Failed to load form: %s", err.Error())
 		}
 		values := map[string][]string(request.PostForm)
-		for name, attr := range definition.Payload {
+		for name, attr := range action.pPayload.Attributes {
 			if val, err := handler.loadValue(name, values[name], &attr); err == nil {
 				parsed[name] = val
 			} else {
@@ -374,20 +345,18 @@ func (handler *requestHandler) loadPayload(request *http.Request) (*map[string]i
 		return nil, errors.New("Unsupported Content-Type")
 	}
 
-	payload := make(map[string]interface{})
-	for k, v := range parsed {
-		attr, ok := handler.action.Payload[k]
+	for k, _ := range parsed {
+		_, ok := action.pPayload.Attributes[k]
 		if !ok {
 			return nil, fmt.Errorf("Unknown field '%s' in payload", k)
 		}
-		val, err := attr.Type.Load(v)
-		if err != nil {
-			return nil, fmt.Errorf("Cannot coerce %v %v into a %v (%v)", reflect.TypeOf(v), v, attr.Type, err)
-		}
-		payload[k] = val
+	}
+	payload, err := action.pPayload.Load(parsed)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to load request payload: %s", err.Error())
 	}
 
-	return &payload, nil
+	return payload, nil
 }
 
 // loadValue loads a single value given a name, an incoming value and an attribute definition.

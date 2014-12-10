@@ -20,7 +20,7 @@ var resource = Resource{
 	Actions: Actions{
 		"echo": Action{
 			Route: GET("?value={value}"), // Capture param in "value"
-			Params: Attributes{
+			Params: Params{
 				"value": Attribute{Type: String, Required: true},
 			},
 			Responses: Responses{
