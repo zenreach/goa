@@ -1,54 +1,54 @@
 package v3
 
 import (
-	"github.com/raphael/goa"
+	. "github.com/raphael/goa"
 )
 
-var commentListResponse = goa.Response{
+var commentListResponse = Response{
 	Status:    200,
 	MediaType: commentListMediaType,
-	Headers: goa.Headers{
+	Headers: Headers{
 		"content-type":  "~application/json",
 		"cache-control": "~max-age=0",
 	},
 }
-var commentResponse = goa.Response{
+var commentResponse = Response{
 	Status:    200,
 	MediaType: commentMediaType,
-	Headers: goa.Headers{
+	Headers: Headers{
 		"content-type":  "~application/json",
 		"cache-control": "~max-age=0",
 	},
 }
 
-var badRequestResponse = goa.Response{
+var badRequestResponse = Response{
 	Status:    400,
 	MediaType: errorMediaType,
-	Headers: goa.Headers{
+	Headers: Headers{
 		"content-type":  "~application/json",
 		"cache-control": "~max-age=0",
 	},
 }
 
-var unauthorizedResponse = goa.Response{
+var unauthorizedResponse = Response{
 	Status:    401,
 	MediaType: errorMediaType,
-	Headers: goa.Headers{
+	Headers: Headers{
 		"content-type":  "~application/json",
 		"cache-control": "~max-age=0",
 	},
 }
 
-var commentSpec = goa.ControllerSpec{
+var commentSpec = ControllerSpec{
 
 	ApiVersion: "3.0",
 
 	RoutePrefix: "/v3/posts/{postId}/comments",
 
-	Params: goa.Attributes{
-		"postId": goa.Attribute{
+	Params: Params{
+		"postId": Attribute{
 			Description: "The ID of the post to fetch comments from.",
-			Type:        goa.String,
+			Type:        String,
 			Required:    true,
 			Regexp:      "[0-9]+",
 		},
@@ -58,54 +58,54 @@ var commentSpec = goa.ControllerSpec{
 
 	MediaType: commentMediaType,
 
-	Actions: goa.Actions{
+	Actions: Actions{
 
 		/* list
 		/
 		/  GET /v3/posts/{postId}/comments
 		*/
-		"list": goa.GET{
-			Path: "",
+		"list": Action{
+			Route: GET(""),
 
 			Description: "Retrieves the list of comments for a post.",
 
-			Params: goa.Attributes{
-				"endDate": goa.Attribute{
+			Params: Params{
+				"endDate": Attribute{
 					Description: "Latest comment date to fetch, a date-time with RFC 3339 formatting.",
-					Type:        goa.Datetime,
+					Type:        Datetime,
 				},
-				"fetchBodies": goa.Attribute{
+				"fetchBodies": Attribute{
 					Description:  "Whether the body content of comments is included. This should be set to false when the comment bodies are not required, to help minimize traffic.",
-					Type:         goa.Boolean,
+					Type:         Boolean,
 					DefaultValue: true,
 				},
-				"maxResults": goa.Attribute{
+				"maxResults": Attribute{
 					Description: "Maximum number of comments to fetch.",
-					Type:        goa.Integer,
+					Type:        Integer,
 					MinValue:    1,
 				},
-				"pageToken": goa.Attribute{
+				"pageToken": Attribute{
 					Description: "Continuation token if the request is paged.",
-					Type:        goa.String,
+					Type:        String,
 				},
-				"startDate": goa.Attribute{
+				"startDate": Attribute{
 					Description: "Earliest comment date to fetch, a date-time with RFC 3339 formatting.",
-					Type:        goa.Datetime,
+					Type:        Datetime,
 				},
-				"status": goa.Attribute{
+				"status": Attribute{
 					Description: "Filter by status.",
-					Type:        goa.String,
-					AllowedValues: goa.Values{
+					Type:        String,
+					AllowedValues: Values{
 						"emptied": "Comments that have had their content removed",
 						"live":    "Comments that are publicly visible",
 						"pending": "Comments that are awaiting administrator approval",
 						"spam":    "Comments marked as spam by the administrator",
 					},
 				},
-				"view": goa.Attribute{
+				"view": Attribute{
 					Description: "Requested view.",
-					Type:        goa.String,
-					AllowedValues: goa.Values{
+					Type:        String,
+					AllowedValues: Values{
 						"ADMIN":  "Admin level detail",
 						"AUTHOR": "Author level detail",
 						"READER": "Reader level detail",
@@ -113,7 +113,7 @@ var commentSpec = goa.ControllerSpec{
 				},
 			},
 
-			Responses: goa.Responses{
+			Responses: Responses{
 				"ok":           commentListResponse,
 				"badRequest":   badRequestResponse,
 				"unauthorized": unauthorizedResponse,
@@ -124,21 +124,21 @@ var commentSpec = goa.ControllerSpec{
 		/
 		/  GET /v3/posts/{postId}/comments/{commentId}
 		*/
-		"get": goa.GET{
-			Path: "/{commentId}",
+		"get": Action{
+			Route: GET("/{commentId}"),
 
 			Description: "Retrieves one comment by comment ID.",
 
-			Params: goa.Attributes{
-				"commentId": goa.Attribute{
+			Params: Params{
+				"commentId": Attribute{
 					Description: "The ID of the comment.",
-					Type:        goa.String,
+					Type:        String,
 					Required:    true,
 					Regexp:      "[0-9]+",
 				},
 			},
 
-			Responses: goa.Responses{
+			Responses: Responses{
 				"ok":           commentResponse,
 				"badRequest":   badRequestResponse,
 				"unauthorized": unauthorizedResponse,
@@ -149,21 +149,21 @@ var commentSpec = goa.ControllerSpec{
 		/
 		/  POST /v3/posts/{postId}/comments/{commentId}/approve
 		*/
-		"approve": goa.POST{
-			Path: "/{commentId}/approve",
+		"approve": Action{
+			Route: POST("/{commentId}/approve"),
 
 			Description: "Marks a comment as not spam.",
 
-			Params: goa.Attributes{
-				"commentId": goa.Attribute{
+			Params: Params{
+				"commentId": Attribute{
 					Description: "The ID of the comment to mark as not spam.",
-					Type:        goa.String,
+					Type:        String,
 					Required:    true,
 					Regexp:      "[0-9]+",
 				},
 			},
 
-			Responses: goa.Responses{
+			Responses: Responses{
 				"ok":           commentResponse,
 				"badRequest":   badRequestResponse,
 				"unauthorized": unauthorizedResponse,
@@ -174,22 +174,22 @@ var commentSpec = goa.ControllerSpec{
 		/
 		/  DELETE /v3/posts/{postId}/comments/{commentId}
 		*/
-		"delete": goa.DELETE{
-			Path: "/{commentId}",
+		"delete": Action{
+			Route: DELETE("/{commentId}"),
 
 			Description: "Deletes a comment by ID.",
 
-			Params: goa.Attributes{
-				"commentId": goa.Attribute{
+			Params: Params{
+				"commentId": Attribute{
 					Description: "The ID of the comment.",
-					Type:        goa.String,
+					Type:        String,
 					Required:    true,
 					Regexp:      "[0-9]+",
 				},
 			},
 
-			Responses: goa.Responses{
-				"ok":           goa.Response{status: 204},
+			Responses: Responses{
+				"ok":           Response{status: 204},
 				"badRequest":   badRequestResponse,
 				"unauthorized": unauthorizedResponse,
 			},
@@ -199,21 +199,21 @@ var commentSpec = goa.ControllerSpec{
 		/
 		/  POST /v3/posts/{postId}/comments/{commentId}/spam
 		*/
-		"markAsSpam": goa.POST{
-			Path: "/{commentId}/spam",
+		"markAsSpam": Action{
+			Route: POST("/{commentId}/spam"),
 
 			Description: "Marks a comment as spam.",
 
-			Params: goa.Attributes{
-				"commentId": goa.Attribute{
+			Params: Params{
+				"commentId": Attribute{
 					Description: "The ID of the comment to mark as spam.",
-					Type:        goa.String,
+					Type:        String,
 					Required:    true,
 					Regexp:      "[0-9]+",
 				},
 			},
 
-			Responses: goa.Responses{
+			Responses: Responses{
 				"ok":           commentResponse,
 				"badRequest":   badRequestResponse,
 				"unauthorized": unauthorizedResponse,
@@ -224,15 +224,15 @@ var commentSpec = goa.ControllerSpec{
 		/
 		/  POST /v3/posts/{postId}/comments/{commentId}/removecontent
 		*/
-		"removeContent": goa.POST{
-			Path: "/{commentId}/removecontent",
+		"removeContent": Action{
+			Route: POST("/{commentId}/removecontent"),
 
 			Description: "Removes the content of a comment.",
 
-			Params: goa.Attributes{
-				"commentId": goa.Attribute{
+			Params: Params{
+				"commentId": Attribute{
 					Description: "The ID of the comment.",
-					Type:        goa.String,
+					Type:        String,
 					Required:    true,
 					Regexp:      "[0-9]+",
 				},
@@ -240,7 +240,7 @@ var commentSpec = goa.ControllerSpec{
 
 			Payload: commentMediaType.GetAttributes(),
 
-			Responses: goa.Responses{
+			Responses: Responses{
 				"ok":           commentResponse,
 				"badRequest":   badRequestResponse,
 				"unauthorized": unauthorizedResponse,

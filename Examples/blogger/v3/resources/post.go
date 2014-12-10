@@ -44,7 +44,7 @@ var postResource = Resource{
 
 			Description: "Retrieves a list of posts.",
 
-			Params: Attributes{
+			Params: Params{
 				"endDate": Attribute{
 					Description: "Latest post date to fetch, a date-time with RFC 3339 formatting.",
 					Type:        Time,
@@ -108,7 +108,7 @@ var postResource = Resource{
 
 			Description: "Retrieves one post by post ID.",
 
-			Params: Attributes{
+			Params: Params{
 				"postId": Attribute{
 					Description: "The ID of the post.",
 					Type:        String,
@@ -142,7 +142,7 @@ var postResource = Resource{
 
 			Description: "Searches for a post that matches the given query terms.",
 
-			Params: Attributes{
+			Params: Params{
 				"q": Attribute{
 					Description: "Query terms to search for.",
 					Type:        String,
@@ -175,7 +175,7 @@ var postResource = Resource{
 
 			Description: "Adds a post.",
 
-			Params: Attributes{
+			Params: Params{
 				"isDraft": Attribute{
 					Description:  "Whether to create the post as a draft",
 					Type:         Boolean,
@@ -201,7 +201,7 @@ var postResource = Resource{
 
 			Description: "Deletes a post by ID.",
 
-			Params: Attributes{
+			Params: Params{
 				"postId": Attribute{
 					Description: "The ID of the post.",
 					Type:        String,
@@ -228,7 +228,7 @@ var postResource = Resource{
 For example, a blog post with the URL http://code.blogger.com/2011/09/blogger-json-api-now-available.html
 has a path of /2011/09/blogger-json-api-now-available.html.`,
 
-			Params: Attributes{
+			Params: Params{
 				"path": Attribute{
 					Description: "Path of the Post to retrieve.",
 					Type:        String,
@@ -262,7 +262,7 @@ has a path of /2011/09/blogger-json-api-now-available.html.`,
 
 			Description: "Updates a post. This method supports patch semantics.",
 
-			Params: Attributes{
+			Params: Params{
 				"postId": Attribute{
 					Description: "The ID of the post.",
 					Type:        String,
@@ -289,7 +289,7 @@ has a path of /2011/09/blogger-json-api-now-available.html.`,
 
 			Description: "Updates a post.",
 
-			Params: Attributes{
+			Params: Params{
 				"postId": Attribute{
 					Description: "The ID of the post.",
 					Type:        String,
@@ -316,7 +316,7 @@ has a path of /2011/09/blogger-json-api-now-available.html.`,
 
 			Description: "Publish a draft post.",
 
-			Params: Attributes{
+			Params: Params{
 				"postId": Attribute{
 					Description: "The ID of the post.",
 					Type:        String,
@@ -345,7 +345,7 @@ has a path of /2011/09/blogger-json-api-now-available.html.`,
 
 			Description: "Revert a published or scheduled post to draft state, which removes the post from the publicly viewable content.",
 
-			Params: Attributes{
+			Params: Params{
 				"postId": Attribute{
 					Description: "The ID of the post.",
 					Type:        String,
