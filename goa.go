@@ -3,8 +3,10 @@ package goa
 import (
 	"fmt"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -17,6 +19,7 @@ type app struct {
 	router      *mux.Router
 	controllers map[string]Controller
 	routeMap    *RouteMap
+	logger      *log.Logger
 }
 
 // Public interface of a goa application
@@ -27,6 +30,8 @@ type Application interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 	// PrintRoutes prints application routes to stdout
 	PrintRoutes()
+	// Logger access
+	Logger() *log.Logger
 }
 
 // A goa controller can be any type (it just needs to implement one function per action it exposes)
@@ -35,7 +40,12 @@ type Controller interface{}
 // Create new goa application given a base path
 func NewApplication(basePath string) Application {
 	router := mux.NewRouter().PathPrefix(basePath).Subrouter()
-	return &app{router: router, controllers: make(map[string]Controller), routeMap: new(RouteMap)}
+	return &app{router: router, controllers: make(map[string]Controller), routeMap: new(RouteMap), logger: NewLogger()}
+}
+
+// New stdout logger
+func NewLogger() *log.Logger {
+	return log.New(os.Stdout, "[goa] ", 0)
 }
 
 // Mount controller under given application and path
@@ -73,6 +83,11 @@ func (app *app) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // PrintRoutes prints application routes to stdout
 func (app *app) PrintRoutes() {
 	app.routeMap.PrintRoutes()
+}
+
+// Logger returns the application logger
+func (app *app) Logger() *log.Logger {
+	return app.logger
 }
 
 // validateResource validates resource definition recursively

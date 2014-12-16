@@ -38,15 +38,16 @@ func (h *Hello) Show(r goa.Request) {
 func (h *Hello) Update(r goa.Request) {
 	found := false
 	id := int(r.ParamInt("id"))
+	payload := r.Payload().(*TValue)
 	for idx, g := range greetings {
 		if g.Id == id {
 			found = true
-			greetings[idx] = greeting{id, r.PayloadString("value")}
+			greetings[idx] = greeting{id, payload.Value}
 			break
 		}
 	}
 	if !found {
-		greetings = append(greetings, greeting{id, r.PayloadString("value")})
+		greetings = append(greetings, greeting{id, payload.Value})
 	}
 	r.RespondEmpty("noContent")
 }

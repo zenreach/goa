@@ -8,7 +8,7 @@
 // Show:
 //  curl http://localhost:8080/api/hello/0 -H x-api-version:1.0
 // Update:
-//   curl -X PUT -d '{"value":"foo"}' http://localhost:8080/api/hello/0 -H x-api-version:1.0  -H Content-Type:application/json
+//   curl -X PUT -d '{"Value":"foo"}' http://localhost:8080/api/hello/0 -H x-api-version:1.0  -H Content-Type:application/json
 // Delete:
 //   curl -X DELETE http://localhost:8080/api/hello/0
 package main
