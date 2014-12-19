@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"reflect"
-	"sort"
 )
 
 // routeData holds the route fields
@@ -32,7 +31,6 @@ func (a byAction) Less(i, j int) bool { return (*a[i]).action < (*a[j]).action }
 // WriteRoutes writes routes table to given io writer
 func (m *RouteMap) WriteRoutes(writer io.Writer) {
 	table := tablewriter.NewWriter(writer)
-	sort.Sort(byAction(*m))
 	table.SetHeader([]string{"Verb", "Path", "Action", "Controller", "Version"})
 	for _, r := range *m {
 		table.Append([]string{r.verb, r.path, r.action, r.controller, r.version})

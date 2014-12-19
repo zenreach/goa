@@ -2,6 +2,7 @@ package goa
 
 import (
 	"fmt"
+	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -15,11 +16,13 @@ import (
 // A goa application fundamentally consists of a router and a set of controllers and resource definitions that get
 // "mounted" under given paths (URLs). The router dispatches incoming requests to the appropriate controller.
 // Goa applications are created via the NewApplication() factory method.
+// Goa application can be run directly via the built-in ServeHTTP() function or used as Negroni middleware using
+// the Handler() function.
 type app struct {
 	router      *mux.Router
 	controllers map[string]Controller
 	routeMap    *RouteMap
-	logger      *log.Logger
+	handler     negroni.Handler
 }
 
 // Public interface of a goa application
@@ -30,8 +33,6 @@ type Application interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 	// PrintRoutes prints application routes to stdout
 	PrintRoutes()
-	// Logger access
-	Logger() *log.Logger
 }
 
 // A goa controller can be any type (it just needs to implement one function per action it exposes)
@@ -40,17 +41,12 @@ type Controller interface{}
 // Create new goa application given a base path
 func NewApplication(basePath string) Application {
 	router := mux.NewRouter().PathPrefix(basePath).Subrouter()
-	return &app{router: router, controllers: make(map[string]Controller), routeMap: new(RouteMap), logger: NewLogger()}
-}
-
-// New stdout logger
-func NewLogger() *log.Logger {
-	return log.New(os.Stdout, "[goa] ", 0)
+	return &app{router: router, controllers: make(map[string]Controller), routeMap: new(RouteMap)}
 }
 
 // Mount controller under given application and path
 // Note that this method will panic on error (e.g. if the path prefix is already in use)
-// This is to make sure that the web app won't even start in case of a blattent error
+// This is to make sure that the web app won't even start in case of a blatant error
 func (app *app) Mount(resource *Resource, controller Controller) {
 	if resource == nil {
 		panic(fmt.Sprintf("goa: %v - missing resource", reflect.TypeOf(controller)))
@@ -65,29 +61,33 @@ func (app *app) Mount(resource *Resource, controller Controller) {
 	if _, err := url.Parse(path); err != nil {
 		panic(fmt.Sprintf("goa: %v - invalid path specification '%s': %v", reflect.TypeOf(controller), path, err))
 	}
+	route := app.router.PathPrefix(path)
 	version := resource.ApiVersion
-	if len(version) == 0 {
-		panic(fmt.Sprintf("goa: %v - missing resource version", reflect.TypeOf(resource)))
+	if len(version) != 0 {
+		route = route.Headers("X-Api-Version", version)
 	}
-	sub := app.router.PathPrefix(path).Headers("X-Api-Version", version).Subrouter()
+	sub := route.Subrouter()
 	finalizeResource(resource)
 	app.routeMap.addRoutes(resource, controller)
-	addHandlers(sub, resource, controller)
+	app.addHandlers(sub, resource, controller)
 }
 
 // ServeHTTP dispatches the handler registered in the matched route.
 func (app *app) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	app.router.ServeHTTP(w, req)
+	logger := &negroni.Logger{log.New(os.Stdout, "[goa] ", 0)}
+	n := negroni.New(negroni.NewRecovery(), logger, negroni.NewStatic(http.Dir("public")))
+	n.Use(app.Handler())
+	n.ServeHTTP(w, req)
+}
+
+// Handler() returns a negroni handler that wraps the application
+func (app *app) Handler() negroni.Handler {
+	return negroni.Wrap(app.router)
 }
 
 // PrintRoutes prints application routes to stdout
 func (app *app) PrintRoutes() {
 	app.routeMap.PrintRoutes()
-}
-
-// Logger returns the application logger
-func (app *app) Logger() *log.Logger {
-	return app.logger
 }
 
 // validateResource validates resource definition recursively
@@ -136,7 +136,7 @@ func (a byPath) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byPath) Less(i, j int) bool { return (*a[i]).path > (*a[j]).path }
 
 // Register HTTP handlers for all controller actions
-func addHandlers(router *mux.Router, definition *Resource, controller Controller) {
+func (app *app) addHandlers(router *mux.Router, definition *Resource, controller Controller) {
 	// First create all routes
 	handlers := byPath{}
 	for name, action := range definition.pActions {
