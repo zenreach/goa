@@ -38,10 +38,12 @@ func main() {
 		l := log.New(os.Stdout, "[hello] ", 0)
 		addr := "localhost:8080"
 		l.Printf("listening on %s", addr)
-		l.Printf("(curl http://%s/api/hello)", addr)
-		l.Printf("(curl http://%s/api/hello/1)", addr)
-		l.Printf("(curl -X PUT -d '{\"Value\":\"foo\"}' -H Content-Type:application/json http://%s/api/hello/1)", addr)
-		l.Printf("(curl -X DELETE http://%s/api/hello/1)", addr)
+		l.Printf("---------------------------------------------------------------------------------------------------------")
+		l.Printf("  index  with `curl http://%s/api/hello`", addr)
+		l.Printf("  show   with `curl http://%s/api/hello/1`", addr)
+		l.Printf("  update with `curl -X PUT -d '{\"Value\":\"foo\"}' -H Content-Type:application/json http://%s/api/hello/1`", addr)
+		l.Printf("  delete with `curl -X DELETE http://%s/api/hello/1`", addr)
+		l.Printf("---------------------------------------------------------------------------------------------------------")
 
 		l.Fatal(http.ListenAndServe(addr, app)) // Application implements standard http.Handlefunc
 	}

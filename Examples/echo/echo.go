@@ -46,6 +46,6 @@ func main() {
 	l := log.New(os.Stdout, "[echo] ", 0)
 	addr := "localhost:8080"
 	l.Printf("listening on %s", addr)
-	l.Printf("(curl http://%s/api/echo?value=foo)", addr)
+	l.Printf("  try with `curl http://%s/api/echo?value=foo`", addr)
 	l.Fatal(http.ListenAndServe(addr, app)) // Application implements standard http.Handlefunc
 }
