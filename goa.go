@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"reflect"
-	"sort"
 	"strings"
 )
 
@@ -141,24 +140,8 @@ func finalizeResource(resource *Resource) {
 	}
 }
 
-// Route handler
-type handlerPath struct {
-	path    string
-	handler http.HandlerFunc
-	route   *mux.Route
-}
-
-// Array of route handler that supports sorting
-type byPath []*handlerPath
-
-func (a byPath) Len() int           { return len(a) }
-func (a byPath) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byPath) Less(i, j int) bool { return (*a[i]).path > (*a[j]).path }
-
 // Register HTTP handlers for all controller actions
 func (app *app) addHandlers(router *mux.Router, definition *Resource, controller Controller) {
-	// First create all routes
-	handlers := make([]*handlerPath, 0, len(definition.pActions))
 	for name, action := range definition.pActions {
 		name = strings.ToUpper(string(name[0])) + name[1:]
 		for _, route := range action.Route.GetRawRoutes() {
@@ -169,21 +152,13 @@ func (app *app) addHandlers(router *mux.Router, definition *Resource, controller
 			if len(elems) > 1 {
 				query = strings.Split(elems[1], "&")
 			}
-			if len(path) > 0 {
-				matcher = matcher.Path(path)
-			}
+			matcher = matcher.Path(path)
 			for _, q := range query {
 				pair := strings.SplitN(q, "=", 2)
 				matcher = matcher.Queries(pair[0], pair[1])
 			}
-			handlers = append(handlers, &handlerPath{path, requestHandlerFunc(name, action, controller), matcher})
+			matcher.HandlerFunc(requestHandlerFunc(name, action, controller))
 		}
-	}
-	// Then sort them by path length (longer first) before registering them so that for example
-	//  "/foo/{id}" comes before "/foo" and is matched first. Ideally should be handled by gorilla...
-	sort.Sort(byPath(handlers))
-	for _, h := range handlers {
-		h.route.HandlerFunc(h.handler)
 	}
 }
 
