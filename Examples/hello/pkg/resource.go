@@ -11,8 +11,6 @@ var HelloResource = Resource{
 
 	MediaType: HelloMediaType,
 
-	ApiVersion: "1.0",
-
 	RoutePrefix: "/hello",
 
 	Actions: Actions{

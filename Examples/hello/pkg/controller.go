@@ -4,11 +4,11 @@ import "github.com/raphael/goa"
 
 // Hard coded list of hello strings
 var greetings = []greeting{
-	greeting{0, "Hello world!"},
-	greeting{1, "Привет мир!"},
-	greeting{2, "Hola mundo!"},
-	greeting{3, "你好世界!"},
-	greeting{4, "こんにちは世界！"},
+	greeting{1, "Hello world!"},
+	greeting{2, "Привет мир!"},
+	greeting{3, "Hola mundo!"},
+	greeting{4, "你好世界!"},
+	greeting{5, "こんにちは世界！"},
 }
 
 // Controller

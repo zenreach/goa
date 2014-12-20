@@ -69,9 +69,9 @@ type Action struct {
 
 	pResponses map[string]*Response // Avoid copying response objects once resource is mounted
 	resource   *Resource            // Parent resource definition, initialized by goa
-	pParams    *Attributes          // Avoid copying params objects once resource is mounted
-	pPayload   *Model               // Avoid copying payload objects once resource is mounted
-	pFilters   *Attributes          // Avoid copying filter objects once resource is mounted
+	pParams    *Params              // Avoid copying params objects once resource is mounted
+	pPayload   *Payload             // Avoid copying payload objects once resource is mounted
+	pFilters   *Filters             // Avoid copying filter objects once resource is mounted
 }
 
 // DSL

@@ -351,7 +351,7 @@ func (handler *requestHandler) loadPayload(request *http.Request) (interface{}, 
 			return nil, fmt.Errorf("Unknown field '%s' in payload", k)
 		}
 	}
-	payload, err := action.pPayload.Load(parsed)
+	payload, err := (*Model)(action.pPayload).Load(parsed)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load request payload: %s", err.Error())
 	}
