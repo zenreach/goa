@@ -127,7 +127,7 @@ func finalizeResource(resource *Resource) {
 			pFilters[n] = p
 		}
 		resource.pActions[an] = &Action{
-			Name:        action.Name,
+			Name:        an,
 			Description: action.Description,
 			Route:       action.Route,
 			Multipart:   action.Multipart,

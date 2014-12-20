@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"sort"
 )
 
 // routeData holds the route fields
@@ -17,6 +18,17 @@ type routeData struct {
 	controller string
 }
 
+// rank returns the index of an HTTP verb in the routes table
+func verbRank(verb string) int {
+	order := []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"}
+	for r, v := range order {
+		if v == verb {
+			return r
+		}
+	}
+	panic("goa: Unknown HTTP verb " + verb)
+}
+
 // The RouteMap type exposes two public methods WriteRoutes and PrintRoutes that can be called to print the routes
 // for all mounted resource actions.
 type RouteMap []*routeData
@@ -24,13 +36,20 @@ type RouteMap []*routeData
 // Sorted map by action
 type byAction RouteMap
 
-func (a byAction) Len() int           { return len(a) }
-func (a byAction) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byAction) Less(i, j int) bool { return (*a[i]).action < (*a[j]).action }
+func (a byAction) Len() int      { return len(a) }
+func (a byAction) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byAction) Less(i, j int) bool {
+	ri, rj := verbRank((*a[i]).verb), verbRank((*a[j]).verb)
+	if ri == rj {
+		return len((*a[i]).path) < len((*a[j]).path)
+	}
+	return ri < rj
+}
 
 // WriteRoutes writes routes table to given io writer
 func (m *RouteMap) WriteRoutes(writer io.Writer) {
 	table := tablewriter.NewWriter(writer)
+	sort.Sort(byAction(*m))
 	table.SetHeader([]string{"Verb", "Path", "Action", "Controller", "Version"})
 	for _, r := range *m {
 		table.Append([]string{r.verb, r.path, r.action, r.controller, r.version})
@@ -69,8 +88,12 @@ func (m *RouteMap) addRoute(resource *Resource, action *Action, controller Contr
 				}
 			}
 		}
+		version := resource.ApiVersion
+		if len(version) == 0 {
+			version = "N/A"
+		}
 		r := routeData{
-			version:    resource.ApiVersion,
+			version:    version,
 			verb:       route[0],
 			path:       prefix + path,
 			action:     action.Name,
