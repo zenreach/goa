@@ -4,20 +4,22 @@
 // Run:
 //   make run
 // Index:
-//   curl http://localhost:8080/api/hello -H x-api-version:1.0
+//   curl http://localhost:8080/api/hello
 // Show:
-//  curl http://localhost:8080/api/hello/0 -H x-api-version:1.0
+//  curl http://localhost:8080/api/hello/0
 // Update:
-//   curl -X PUT -d '{"value":"foo"}' http://localhost:8080/api/hello/0 -H x-api-version:1.0  -H Content-Type:application/json
+//   curl -X PUT -d '{"Value":"foo"}' http://localhost:8080/api/hello/1 -H Content-Type:application/json
 // Delete:
-//   curl -X DELETE http://localhost:8080/api/hello/0
+//   curl -X DELETE http://localhost:8080/api/hello/1
 package main
 
 import (
-	"./hello"
+	"./pkg"
 	"flag"
 	"github.com/raphael/goa"
+	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -33,6 +35,16 @@ func main() {
 	if *printRoutes {
 		app.PrintRoutes()
 	} else {
-		http.ListenAndServe(":8080", app)
+		l := log.New(os.Stdout, "[hello] ", 0)
+		addr := "localhost:8080"
+		l.Printf("listening on %s", addr)
+		l.Printf("---------------------------------------------------------------------------------------------------------")
+		l.Printf("  index  with `curl http://%s/api/hello`", addr)
+		l.Printf("  show   with `curl http://%s/api/hello/1`", addr)
+		l.Printf("  update with `curl -X PUT -d '{\"Value\":\"foo\"}' -H Content-Type:application/json http://%s/api/hello/1`", addr)
+		l.Printf("  delete with `curl -X DELETE http://%s/api/hello/1`", addr)
+		l.Printf("---------------------------------------------------------------------------------------------------------")
+
+		l.Fatal(http.ListenAndServe(addr, app)) // Application implements standard http.Handlefunc
 	}
 }

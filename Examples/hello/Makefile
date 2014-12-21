@@ -1,10 +1,13 @@
-.PHONY : run
+.PHONY: run routes clean
 
-run :
+run:
 	godep go run hello.go
 
-build : hello
-	godep go build
+routes:
+	godep go run hello.go --routes
 
-clean :
+hello: hello.go pkg/*.go
+	godep go build hello.go
+
+clean:
 	rm hello

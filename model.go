@@ -46,7 +46,7 @@ import (
 type Model struct {
 	Attributes     Attributes
 	Blueprint      interface{}
-	fieldNameByAtt *map[string]string // Mapping of blueprint field name to attribute name
+	fieldNameByAtt *map[string]string // Internal mapping of blueprint field name to attribute name
 }
 
 // Create new model definition given named attributes and a blueprint

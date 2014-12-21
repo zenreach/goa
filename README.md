@@ -1,5 +1,7 @@
 # goa
 --
+[![GoDoc](https://godoc.org/github.com/raphael/goa?status.svg)](https://godoc.org/github.com/raphael/goa) [![Build Status](https://travis-ci.org/raphael/goa.svg)](https://travis-ci.org/raphael/goa)
+	
     import "github.com/raphael/goa"
 
 goa provides a novel way to build RESTful APIs using go, it uses the same
@@ -54,7 +56,7 @@ the example above, the following runs the goa app:
        http.ListenAndServe(":80", app)             // Application implements standard http.Handlefunc
     }
 
-Given the code above clients may send HTTP requests to "/echo?value=xxx". The
+Given the code above clients may send HTTP requests to `/echo?value=xxx`. The
 response will have status code 200 and the body will contain the content of the
 "value" query string (xxx). If the client does not specify the "value" query
 string then goa automatically generates a response with code 400 and a message
@@ -129,9 +131,9 @@ type Action struct {
 	Name        string
 	Description string
 	Route       Route
-	Params      Attributes
-	Payload     Attributes
-	Filters     Attributes
+	Params      Params
+	Payload     Payload
+	Filters     Filters
 	Views       []string
 	Responses   Responses
 	Multipart   int
@@ -445,6 +447,13 @@ Build error with stack trace information
 func NewErrorf(format string, a ...interface{}) Error
 ```
 Helper method with fmt.Errorf like behavior
+
+#### type Filters
+
+```go
+type Filters Attributes
+```
+
 
 #### type Hash
 
@@ -908,6 +917,20 @@ Example:
 func (m *Model) Validate() error
 ```
 
+#### type Params
+
+```go
+type Params Attributes
+```
+
+
+#### type Payload
+
+```go
+type Payload Model
+```
+
+
 #### type Request
 
 ```go
@@ -927,12 +950,9 @@ type Request interface {
 	ParamFloat(name string) float64  // Retrieve float parameter
 	ParamTime(name string) time.Time // Retrieve time parameter
 
-	Payload(name string) interface{}   // Retrieve payload attribute, requires type assertion before value can be used
-	PayloadString(name string) string  // Retrieve string payload attribute
-	PayloadInt(name string) int64      // Retrieve integer payload attribute
-	PayloadBool(name string) bool      // Retrieve boolean payload attribute
-	PayloadFloat(name string) float64  // Retrieve float payload attribute
-	PayloadTime(name string) time.Time // Retrieve time payload attribute
+	Payload() interface{} // Retrieve payload, type is pointer to blueprint struct
+
+	RawRequest() *http.Request // Underlying http request
 }
 ```
 
@@ -941,17 +961,12 @@ exposes methods to retrieve the coerced request parameters and payload
 attributes as well as the raw HTTP request object.
 
 The same interface also exposes methods to send the response back. There are a
-few ways to do this:
-
-    - use `Respond()` to specify a response object. This object can be any object that implements the Response
-
-interface.
-
-    - use `RespondEmpty()`, `RespondWithBody()` or `RespondWithHeader()` to send a response given its name and content
-
-the name of a response must match one of the action response definition names
-
-    - use `RespondInternalError()` to return an error response (status 500)
+few ways to do this: - use `Respond()` to specify a response object. This object
+can be any object that implements the Response interface. - use
+`RespondEmpty()`, `RespondWithBody()` or `RespondWithHeader()` to send a
+response given its name and content the name of a response must match one of the
+action response definition names - use `RespondInternalError()` to return an
+error response (status 500)
 
 The Request interface also exposes a `ResponseBuilder()` method which given a
 response name returns an object that can be used to build the corresponding

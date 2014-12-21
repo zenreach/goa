@@ -58,18 +58,27 @@ type Action struct {
 	Name        string
 	Description string
 	Route       Route
-	Params      Attributes
-	Payload     Attributes
-	Filters     Attributes
+	Params      Params
+	Payload     Payload
+	Filters     Filters
 	Views       []string
 	Responses   Responses
 	Multipart   int
 
-	// Internal fields
+	// Internal fields (compiled DSL)
 
 	pResponses map[string]*Response // Avoid copying response objects once resource is mounted
 	resource   *Resource            // Parent resource definition, initialized by goa
+	pParams    *Params              // Avoid copying params objects once resource is mounted
+	pPayload   *Payload             // Avoid copying payload objects once resource is mounted
+	pFilters   *Filters             // Avoid copying filter objects once resource is mounted
 }
+
+// DSL
+
+type Params Attributes
+type Payload Model
+type Filters Attributes
 
 // ValidateResponse checks that the response content matches one of the action response definitions if any
 func (a *Action) ValidateResponse(data ResponseData) error {

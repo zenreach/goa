@@ -2,11 +2,14 @@ package hello
 
 import . "github.com/raphael/goa"
 
+// Update payload data type
+type TValue struct {
+	Value string `attribute:"value"`
+}
+
 var HelloResource = Resource{
 
 	MediaType: HelloMediaType,
-
-	ApiVersion: "1.0",
 
 	RoutePrefix: "/hello",
 
@@ -21,7 +24,7 @@ var HelloResource = Resource{
 		"show": Action{
 			Description: "Get hello string with given id",
 			Route:       GET("/{id}"),
-			Params: Attributes{
+			Params: Params{
 				"id": Attribute{Type: Integer, Required: true}, // Inherits other fields from media type attribute
 			},
 			Responses: Responses{"ok": Http.Ok(), "notFound": Http.NotFound()},
@@ -30,14 +33,17 @@ var HelloResource = Resource{
 		"update": Action{
 			Description: "Replace hello string with given id",
 			Route:       PUT("/{id}"),
-			Params: Attributes{
+			Params: Params{
 				"id": Attribute{Type: Integer, Required: true},
 			},
-			Payload: Attributes{
-				"value": Attribute{
-					Type:        String,
-					Description: "New value for hello string with given id",
-					Required:    true,
+			Payload: Payload{
+				Blueprint: TValue{},
+				Attributes: Attributes{
+					"value": Attribute{
+						Type:        String,
+						Description: "New value for hello string with given id",
+						Required:    true,
+					},
 				},
 			},
 			Responses: Responses{"noContent": Http.NoContent(), "notFound": Http.NotFound()},
@@ -46,7 +52,7 @@ var HelloResource = Resource{
 		"delete": Action{
 			Description: "Delete hello string with given id",
 			Route:       DELETE("/{id}"),
-			Params: Attributes{
+			Params: Params{
 				"id": Attribute{Type: Integer, Required: true},
 			},
 			Responses: Responses{"noContent": Http.NoContent(), "notFound": Http.NotFound()},

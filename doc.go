@@ -45,7 +45,7 @@
 //       http.ListenAndServe(":80", app)             // Application implements standard http.Handlefunc
 //    }
 //
-// Given the code above clients may send HTTP requests to "/echo?value=xxx". The response will have status code 200
+// Given the code above clients may send HTTP requests to `/echo?value=xxx`. The response will have status code 200
 // and the body will contain the content of the "value" query string (xxx).
 // If the client does not specify the "value" query string then goa automatically generates a response with code 400 and
 // a message in the body explaining that the query string is required.

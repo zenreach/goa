@@ -4,11 +4,11 @@ import "github.com/raphael/goa"
 
 // Hard coded list of hello strings
 var greetings = []greeting{
-	greeting{0, "Hello world!"},
-	greeting{1, "Привет мир!"},
-	greeting{2, "Hola mundo!"},
-	greeting{3, "你好世界!"},
-	greeting{4, "こんにちは世界！"},
+	greeting{1, "Hello world!"},
+	greeting{2, "Привет мир!"},
+	greeting{3, "Hola mundo!"},
+	greeting{4, "你好世界!"},
+	greeting{5, "こんにちは世界！"},
 }
 
 // Controller
@@ -38,15 +38,16 @@ func (h *Hello) Show(r goa.Request) {
 func (h *Hello) Update(r goa.Request) {
 	found := false
 	id := int(r.ParamInt("id"))
+	payload := r.Payload().(*TValue)
 	for idx, g := range greetings {
 		if g.Id == id {
 			found = true
-			greetings[idx] = greeting{id, r.PayloadString("value")}
+			greetings[idx] = greeting{id, payload.Value}
 			break
 		}
 	}
 	if !found {
-		greetings = append(greetings, greeting{id, r.PayloadString("value")})
+		greetings = append(greetings, greeting{id, payload.Value})
 	}
 	r.RespondEmpty("noContent")
 }
