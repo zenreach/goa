@@ -35,7 +35,7 @@ type EchoController struct {
 }
 
 // Action implementation
-func (c *EchoController) Echo(request Request, value string) {
+func (c *EchoController) Echo(request *Request, value string) {
 	request.Respond(value) // Send 200 response, use "value" param as body
 }
 

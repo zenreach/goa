@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"path"
 	"reflect"
-	"sort"
+	"regexp"
 	"strings"
 )
 
@@ -32,16 +33,19 @@ type actionHandler struct {
 // the service is running. So it's OK for this to be intensive and is a good
 // place to do optimizations for later processing.
 func newActionHandler(name string, action *Action, controller Controller) (*actionHandler, error) {
-	if positions, err := validateAction(name, action, controller); err != nil {
+	if err := validateAction(name, action, controller); err != nil {
+		return nil, err
+	}
+	actionMethod := reflect.ValueOf(controller).MethodByName(name)
+	if positions, err := computeArgPos(action); err != nil {
 		return nil, err
 	} else {
-		actionMethod := reflect.ValueOf(controller).MethodByName(name)
 		return &actionHandler{
 			action:       action,
 			controller:   controller,
 			actionMethod: actionMethod,
 			actionName:   name,
-			positions:    *positions,
+			positions:    positions,
 		}, nil
 	}
 }
@@ -73,14 +77,12 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 		}
 	}
 	ln := len(request.Params) + 1
-	startPos := 1
 	if hasPayload {
 		ln += 1
-		startPos = 2
 	}
-	args := make([]reflect.Value, ln)
+	args := make([]reflect.Value, ln, ln)
 	for n, p := range request.Params {
-		args[handler.positions[n]+startPos] = reflect.ValueOf(p)
+		args[handler.positions[n]] = reflect.ValueOf(p)
 	}
 	args[0] = reflect.ValueOf(request)
 	if hasPayload {
@@ -102,10 +104,10 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 //      reflect doesn't let us look at the method argument names. Instead we
 //      count that each argument type appears the right number times in the
 //      attributes.
-func validateAction(name string, action *Action, controller Controller) (*map[string]int, error) {
+func validateAction(name string, action *Action, controller Controller) error {
 	actionMethod := reflect.ValueOf(controller).MethodByName(name)
 	if actionMethod.Kind() != reflect.Func {
-		return nil, fmt.Errorf("No method '%s' exposed by controller %v",
+		return fmt.Errorf("No method '%s' exposed by controller %v",
 			name, reflect.TypeOf(controller).Elem())
 	}
 	attributes := *action.pParams
@@ -121,7 +123,7 @@ func validateAction(name string, action *Action, controller Controller) (*map[st
 			msg += " and a payload"
 		}
 		msg += ". Please make sure the action method has the correct number of arguments."
-		return nil, fmt.Errorf(msg, name, mType.NumIn(), len(attributes))
+		return fmt.Errorf(msg, name, mType.NumIn(), len(attributes))
 	}
 	attrKinds := make(map[reflect.Kind]int)
 	for _, v := range attributes {
@@ -137,71 +139,32 @@ func validateAction(name string, action *Action, controller Controller) (*map[st
 	}
 	for k, v := range attrKinds {
 		if v != methKinds[k] {
-			return nil, fmt.Errorf(`The action parameters and payload define %d
- attribute(s) of type %v but the action method '%s' defines %v arguments of that
- type. Make sure these two numbers match.`, v, k, name, methKinds[k])
+			return fmt.Errorf("The action parameters and payload define %d attribute(s) of type %v but the action method '%s' defines %v arguments of that type. Make sure these two numbers match.",
+				v, k, name, methKinds[k])
 		}
 	}
-	startPos := 0
-	if hasPayload {
-		startPos = 1
-	}
-	pos := computeArgPos(mType, attributes, startPos)
-	return &pos, nil
+	return nil
 }
 
-// TBD: CHANGE ORDER TO FOLLOW ORDER OF APPEARANCE IN PATH
-// computeArgPos computes the method argument positions for each attribute name.
-// The mapping is done by type since reflect doesn't let us access the argument
-// names. The idea is to use alphabetical order by convention for a given type.
-// So for example given the following attributes:
-//
-//     Attributes{
-//         "foo": Attribute{Type: String},
-//         "bar": Attribute{Type: Number},
-//         "baz": Attribute{Type: String},
-//     }
-//
-// And the following method:
-//
-//     func (c *controller) action(a int, b string, c string) {}
-//
-// The algorithm produces the following map:
-//
-//     map[string]int{
-//         "foo": 2,
-//         "bar": 0,
-//         "baz": 1,
-//     }
-//
-// "baz" get affected to the argument in second position because it is ordered
-// before "foo".
-func computeArgPos(method reflect.Type, attributes Params, startPos int) map[string]int {
-	positions := make(map[string]int, len(attributes))
-	done := make(map[reflect.Kind]int)
-	keys := make([]string, 0, len(attributes))
-	for k, _ := range attributes {
-		keys = append(keys, k)
+// computeArgPos computes the method argument positions for each parameter.
+// The position of parameters in the action method arguments matches their
+// position in the action route.
+func computeArgPos(action *Action) (map[string]int, error) {
+	// TBD: Make sure all routes define the same captures
+	routes := action.Route.GetRawRoutes()
+	fullPath := path.Join(action.basePath, routes[0][1])
+	positions := make(map[string]int)
+	r := regexp.MustCompile("{([^}]+)}")
+	matches := r.FindAllStringSubmatch(fullPath, -1)
+	hasPayload := len(action.pPayload.Attributes) > 0
+	startPos := 1
+	if hasPayload {
+		startPos = 2
 	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		kind := toKind(attributes[k].Type)
-		skip := done[kind]
-		pos, found := startPos, 0
-		for i := 0; i < method.NumIn(); i++ {
-			if method.In(i).Kind() == kind {
-				found += 1
-				if found > skip {
-					break
-				}
-			}
-			pos += 1
-		}
-		done[kind] += 1
-		positions[k] = pos
+	for i, m := range matches {
+		positions[m[1]] = i + startPos
 	}
-
-	return positions
+	return positions, nil
 }
 
 // toKind returns the reflect.Kind value for a given attribute type

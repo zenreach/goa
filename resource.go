@@ -72,6 +72,7 @@ type Action struct {
 	pParams    *Params    // Avoid copying params objects once resource is mounted
 	pPayload   *Payload   // Avoid copying payload objects once resource is mounted
 	pFilters   *Filters   // Avoid copying filter objects once resource is mounted
+	basePath   string     // Base URI to action including app base path and resource route prefix (e.g. "/api/echo")
 }
 
 // DSL

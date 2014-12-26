@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"path"
 	"os"
+	"path"
 	"reflect"
 	"strings"
 )
@@ -91,7 +91,7 @@ func (app *app) Mount(controller Controller, resource *Resource) {
 		route := app.router.Headers("X-Api-Version", version)
 		sub = route.Subrouter()
 	}
-	finalizeResource(resource)
+	app.finalizeResource(resource)
 	app.routeMap.addRoutes(resource, controller)
 	app.addHandlers(sub, resourcePath, resource, controller)
 }
@@ -121,7 +121,7 @@ func validateResource(resource *Resource) error {
 }
 
 // finalizeResource links child action and response definitions back to resource definition
-func finalizeResource(resource *Resource) {
+func (app *app) finalizeResource(resource *Resource) {
 	resource.pActions = make(map[string]*Action, len(resource.Actions))
 	for an, action := range resource.Actions {
 		responses := make(Responses, len(action.Responses))
@@ -140,6 +140,7 @@ func finalizeResource(resource *Resource) {
 		for n, p := range action.Filters {
 			filters[n] = p
 		}
+		basePath := path.Join(app.basePath, resource.RoutePrefix)
 		resource.pActions[an] = &Action{
 			Name:        an,
 			Description: action.Description,
@@ -150,6 +151,7 @@ func finalizeResource(resource *Resource) {
 			pPayload:    pPayload,
 			pFilters:    &filters,
 			pResponses:  &responses,
+			basePath:    basePath,
 		}
 	}
 }
