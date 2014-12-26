@@ -3,6 +3,7 @@
     import "github.com/raphael/goa"
 
 [![GoDoc](https://godoc.org/github.com/raphael/goa?status.svg)](https://godoc.org/github.com/raphael/goa) [![Build Status](https://travis-ci.org/raphael/goa.svg)](https://travis-ci.org/raphael/goa)
+
 goa provides a novel way to build RESTful APIs using go, it uses the same
 design/implementation separation principle introduced by RightScale's praxis
 framework (http://www.praxis-framework.io).
