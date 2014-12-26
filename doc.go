@@ -13,11 +13,11 @@
 // boilerplate code that validation and coercion usually require.
 //
 // goa also provides the following benefits:
-// - built-in support for bulk actions using multi-part mime
-// - integration with Negroni (http://godoc.org/github.com/codegangsta/negroni)
-//   to leverage existing middlewares
-// - built-in support for form encoded, multipart form encoded and JSON request
-//   bodies
+//    - built-in support for bulk actions using multi-part mime
+//    - integration with Negroni (http://godoc.org/github.com/codegangsta/negroni)
+//      to leverage existing middlewares
+//    - built-in support for form encoded, multipart form encoded and JSON request
+//      bodies
 //
 // A controller in goa can be any object that exposes methods corresponding to
 // the actions defined in the resource definition. The first argument of the
