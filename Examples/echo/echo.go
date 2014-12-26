@@ -1,10 +1,8 @@
 /*
-/ Minimal goa app which implements a single "echo" action
+/ Echo goa app which implements a single "echo" action.
 / Send requests with curl via:
 /
 /     curl http://localhost:8080/api/echo?value=foo
-/
-/ Note how goa generates a helpful error response if value param is not provided
 */
 package main
 
@@ -15,7 +13,7 @@ import (
 	"os"
 )
 
-// minimal resource - only one action: "echo"
+// Echo resource - only one action: "echo"
 var resource = Resource{
 	RoutePrefix: "/echo",
 	Actions: Actions{
@@ -31,21 +29,25 @@ var resource = Resource{
 	},
 }
 
-// Controller struct, minimal doesn't need state so empty
-type EchoController struct{}
+// Controller struct
+type EchoController struct {
+	Controller
+}
 
 // Action implementation
-func (c *EchoController) Echo(r Request) {
-	r.RespondWithBody("ok", r.ParamString("value")) // Send default response, use "value" param as response body
+func (c *EchoController) Echo(request Request, value string) {
+	request.Respond(value) // Send 200 response, use "value" param as body
 }
 
 // Entry point
 func main() {
-	app := NewApplication("/api")           // Create application
-	app.Mount(&resource, &EchoController{}) // Mount resource and corresponding controller
+	app := New("/api")                      // Create application
+	app.Mount(&EchoController{}, &resource) // Mount resource and corresponding controller
 	l := log.New(os.Stdout, "[echo] ", 0)
 	addr := "localhost:8080"
 	l.Printf("listening on %s", addr)
+	l.Printf("Routes:")
+	app.PrintRoutes()
 	l.Printf("  try with `curl http://%s/api/echo?value=foo`", addr)
-	l.Fatal(http.ListenAndServe(addr, app)) // Application implements standard http.Handlefunc
+	l.Fatal(http.ListenAndServe(addr, app)) // app implements http.Handlefunc
 }

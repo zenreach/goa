@@ -31,7 +31,7 @@ type Resource struct {
 // the parameters and payload fields (and returns a response with status code 400 and a description of the validation
 // error in the body in case of failure).
 //
-// The Multipart field specifies whether the request body must(RequiresMultipart) or can (SupportsMultipart) use a
+// The Multipart field specifies whether the request body must (RequiresMultipart) or can (SupportsMultipart) use a
 // multipart content type. Multipart requests can be used to implement bulk actions - for example bulk updates. Each
 // part contains the payload for a single resource, the same payload that would be used to apply the action to that
 // resource in a standard (non-multipart) request.
@@ -67,11 +67,11 @@ type Action struct {
 
 	// Internal fields (compiled DSL)
 
-	pResponses map[string]*Response // Avoid copying response objects once resource is mounted
-	resource   *Resource            // Parent resource definition, initialized by goa
-	pParams    *Params              // Avoid copying params objects once resource is mounted
-	pPayload   *Payload             // Avoid copying payload objects once resource is mounted
-	pFilters   *Filters             // Avoid copying filter objects once resource is mounted
+	resource   *Resource  // Parent resource definition, initialized by goa
+	pResponses *Responses // Avoid copying response objects once resource is mounted
+	pParams    *Params    // Avoid copying params objects once resource is mounted
+	pPayload   *Payload   // Avoid copying payload objects once resource is mounted
+	pFilters   *Filters   // Avoid copying filter objects once resource is mounted
 }
 
 // DSL
@@ -81,23 +81,16 @@ type Payload Model
 type Filters Attributes
 
 // ValidateResponse checks that the response content matches one of the action response definitions if any
-func (a *Action) ValidateResponse(data ResponseData) error {
-	if len(a.pResponses) == 0 {
+func (a *Action) ValidateResponse(res *standardResponse) error {
+	if len(*a.pResponses) == 0 {
 		return nil
 	}
-	// We cheat a little here, if the response is a standardResponse and its definition field is initialized then use
-	// that - otherwise try all candidate definitions
-	if std, ok := data.(*standardResponse); ok {
-		if r := std.definition; r != nil {
-			return r.Validate(data)
-		}
-	}
-	for _, r := range a.pResponses {
-		if err := r.Validate(data); err == nil {
+	for _, r := range *a.pResponses {
+		if err := r.Validate(res); err == nil {
 			return nil
 		}
 	}
-	return fmt.Errorf("Response %v does not match any of action '%s' response definitions", data, a.Name)
+	return fmt.Errorf("Response %+v does not match any of action '%s' response definitions", res, a.Name)
 }
 
 // Interface implemented by action route

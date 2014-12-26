@@ -1,13 +1,13 @@
 .PHONY: run routes clean
 
 run:
-	godep go run minimal.go
+	godep go run echo.go
 
 routes:
-	godep go run minimal.go --routes
+	godep go run echo.go --routes
 
-minimal: minimal.go
-	godep go build minimal.go
+echo: echo.go
+	godep go build echo.go
 
 clean:
-	rm minimal
+	rm echo

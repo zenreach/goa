@@ -12,41 +12,63 @@ import (
 	"strings"
 )
 
-// A goa application fundamentally consists of a router and a set of controllers and resource definitions that get
-// "mounted" under given paths (URLs). The router dispatches incoming requests to the appropriate controller.
-// Goa applications are created via the NewApplication() factory method.
-// Goa application can be run directly via the built-in ServeHTTP() function or used as Negroni middleware using
-// the Handler() function.
-type app struct {
-	router      *mux.Router
-	controllers map[string]Controller
-	routeMap    *RouteMap
-	handler     negroni.Handler
-}
-
-// Public interface of a goa application
+// Public interface of a goa application.
+// A goa application fundamentally consists of a router and a set of controller
+// and resource definition pairs that get "mounted" under given paths (URLs).
+// The router dispatches incoming requests to the appropriate controller.
+// Goa applications are created via the `New()` factory function. They can be
+// run directly via the `ServeHTTP()` method or as a Negroni
+// (https://github.com/codegangsta/negroni) middleware via the `Handler()`
+// method. All routes mounted on an application can be printed using the
+// `PrintRoutes()` method.
 type Application interface {
-	// Mount a controller
-	Mount(definition *Resource, controller Controller)
-	// Goa apps implement the standard http.HandlerFunc
+	// Mount() adds a controller and associated resource to the application
+	Mount(controller Controller, definition *Resource)
+	// ServeHTTP() implements http.HandlerFunc
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
+	// Handler() returns a Negroni handler that wraps the application
+	Handler() negroni.Handler
 	// PrintRoutes prints application routes to stdout
 	PrintRoutes()
 }
 
-// A goa controller can be any type (it just needs to implement one function per action it exposes)
-type Controller interface{}
-
-// Create new goa application given a base path
-func NewApplication(basePath string) Application {
-	router := mux.NewRouter().PathPrefix(basePath).Subrouter()
-	return &app{router: router, controllers: make(map[string]Controller), routeMap: new(RouteMap)}
+// Internal struct holding application data
+// Implements the Application interface
+type app struct {
+	router      *mux.Router
+	controllers map[string]*Controller
+	routeMap    *RouteMap
+	n           *negroni.Negroni
 }
 
-// Mount controller under given application and path
-// Note that this method will panic on error (e.g. if the path prefix is already in use)
-// This is to make sure that the web app won't even start in case of a blatant error
-func (app *app) Mount(resource *Resource, controller Controller) {
+// New creates a new goa application given a base path and an optional set of
+// Negroni handlers (middleware).
+func New(basePath string, handlers ...negroni.Handler) Application {
+	router := mux.NewRouter().PathPrefix(basePath).Subrouter()
+	var n *negroni.Negroni
+	if len(handlers) == 0 {
+		// Default handlers a la "Negroni Classic()"
+		logger := &negroni.Logger{log.New(os.Stdout, "[goa] ", 0)}
+		n = negroni.New(negroni.NewRecovery(), logger, negroni.NewStatic(http.Dir("public")))
+	} else {
+		// Custom handlers
+		n = negroni.New(handlers...)
+	}
+	a := &app{
+		router:      router,
+		controllers: make(map[string]*Controller),
+		routeMap:    &RouteMap{base: basePath},
+	}
+	n.Use(a.Handler())
+	a.n = n
+	return a
+}
+
+// Mount adds a controller and associated resource to the application.
+// The route to the controller is defined in the resource.
+// This method panics on error (e.g. if the reource path prefix is already in
+// use) to make sure that the app won't even start in case of a blatant error.
+func (app *app) Mount(controller Controller, resource *Resource) {
 	if resource == nil {
 		panic(fmt.Sprintf("goa: %v - missing resource", reflect.TypeOf(controller)))
 	}
@@ -54,6 +76,9 @@ func (app *app) Mount(resource *Resource, controller Controller) {
 		panic(fmt.Sprintf("goa: %v - invalid resource: %s", reflect.TypeOf(controller), err.Error()))
 	}
 	path := resource.RoutePrefix
+	if len(path) > 0 && string(path[0]) != "/" {
+		path = "/" + path
+	}
 	if _, ok := app.controllers[path]; ok {
 		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), path, reflect.TypeOf(controller)))
 	}
@@ -73,10 +98,7 @@ func (app *app) Mount(resource *Resource, controller Controller) {
 
 // ServeHTTP dispatches the handler registered in the matched route.
 func (app *app) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	logger := &negroni.Logger{log.New(os.Stdout, "[goa] ", 0)}
-	n := negroni.New(negroni.NewRecovery(), logger, negroni.NewStatic(http.Dir("public")))
-	n.Use(app.Handler())
-	n.ServeHTTP(w, req)
+	app.n.ServeHTTP(w, req)
 }
 
 // Handler() returns a negroni handler/middleware that runs the application
@@ -102,29 +124,21 @@ func validateResource(resource *Resource) error {
 func finalizeResource(resource *Resource) {
 	resource.pActions = make(map[string]*Action, len(resource.Actions))
 	for an, action := range resource.Actions {
-		pResponses := make(map[string]*Response, len(action.Responses))
-		for rn, response := range action.Responses {
-			pResponses[rn] = &Response{
-				Description: response.Description,
-				Status:      response.Status,
-				MediaType:   response.MediaType,
-				Location:    response.Location,
-				Headers:     response.Headers,
-				Parts:       response.Parts,
-				resource:    resource,
-			}
+		responses := make(Responses, len(action.Responses))
+		for n, r := range action.Responses {
+			responses[n] = r
 		}
-		pParams := make(Params, len(action.Params))
+		params := make(Params, len(action.Params))
 		for n, p := range action.Params {
-			pParams[n] = p
+			params[n] = p
 		}
 		pPayload := &Payload{
 			Attributes: action.Payload.Attributes,
 			Blueprint:  action.Payload.Blueprint,
 		}
-		pFilters := make(Filters, len(action.Filters))
+		filters := make(Filters, len(action.Filters))
 		for n, p := range action.Filters {
-			pFilters[n] = p
+			filters[n] = p
 		}
 		resource.pActions[an] = &Action{
 			Name:        an,
@@ -132,17 +146,17 @@ func finalizeResource(resource *Resource) {
 			Route:       action.Route,
 			Multipart:   action.Multipart,
 			Views:       action.Views,
-			pParams:     &pParams,
+			pParams:     &params,
 			pPayload:    pPayload,
-			pFilters:    &pFilters,
-			pResponses:  pResponses,
+			pFilters:    &filters,
+			pResponses:  &responses,
 		}
 	}
 }
 
 // Register HTTP handlers for all controller actions
-func (app *app) addHandlers(router *mux.Router, definition *Resource, controller Controller) {
-	for name, action := range definition.pActions {
+func (app *app) addHandlers(router *mux.Router, resource *Resource, controller Controller) {
+	for name, action := range resource.pActions {
 		name = strings.ToUpper(string(name[0])) + name[1:]
 		for _, route := range action.Route.GetRawRoutes() {
 			matcher := router.Methods(route[0])
@@ -157,16 +171,16 @@ func (app *app) addHandlers(router *mux.Router, definition *Resource, controller
 				pair := strings.SplitN(q, "=", 2)
 				matcher = matcher.Queries(pair[0], pair[1])
 			}
-			matcher.HandlerFunc(requestHandlerFunc(name, action, controller))
+			matcher.HandlerFunc(actionHandlerFunc(name, action, controller))
 		}
 	}
 }
 
 // Single action handler
-// All the logic lies in the RequestHandler struct which implements the standard http.HandlerFunc
-func requestHandlerFunc(name string, action *Action, controller Controller) http.HandlerFunc {
+// All the logic lies in the actionHandler struct which implements the standard http.HandlerFunc
+func actionHandlerFunc(name string, action *Action, controller Controller) http.HandlerFunc {
 	// Use closure for great benefits: do not build new handler for every request
-	handler, err := newRequestHandler(name, action, controller)
+	handler, err := newActionHandler(name, action, controller)
 	if err != nil {
 		panic(fmt.Sprintf("goa: %s", err.Error()))
 	}
