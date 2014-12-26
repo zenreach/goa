@@ -61,7 +61,8 @@ func (m *RouteMap) WriteRoutes(writer io.Writer) {
 }
 
 // PrintRoutes prints routes to stdout
-func (m *RouteMap) PrintRoutes() {
+func (m *RouteMap) PrintRoutes(basePath string) {
+	m.base = basePath
 	m.WriteRoutes(os.Stdout)
 }
 

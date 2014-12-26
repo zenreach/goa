@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"os"
 	"reflect"
 	"strings"
@@ -36,6 +37,7 @@ type Application interface {
 // Implements the Application interface
 type app struct {
 	router      *mux.Router
+	basePath    string
 	controllers map[string]*Controller
 	routeMap    *RouteMap
 	n           *negroni.Negroni
@@ -44,7 +46,7 @@ type app struct {
 // New creates a new goa application given a base path and an optional set of
 // Negroni handlers (middleware).
 func New(basePath string, handlers ...negroni.Handler) Application {
-	router := mux.NewRouter().PathPrefix(basePath).Subrouter()
+	router := mux.NewRouter()
 	var n *negroni.Negroni
 	if len(handlers) == 0 {
 		// Default handlers a la "Negroni Classic()"
@@ -56,8 +58,9 @@ func New(basePath string, handlers ...negroni.Handler) Application {
 	}
 	a := &app{
 		router:      router,
+		basePath:    basePath,
 		controllers: make(map[string]*Controller),
-		routeMap:    &RouteMap{base: basePath},
+		routeMap:    new(RouteMap),
 	}
 	n.Use(a.Handler())
 	a.n = n
@@ -75,25 +78,22 @@ func (app *app) Mount(controller Controller, resource *Resource) {
 	if err := validateResource(resource); err != nil {
 		panic(fmt.Sprintf("goa: %v - invalid resource: %s", reflect.TypeOf(controller), err.Error()))
 	}
-	path := resource.RoutePrefix
-	if len(path) > 0 && string(path[0]) != "/" {
-		path = "/" + path
+	resourcePath := path.Join(app.basePath, resource.RoutePrefix)
+	if _, ok := app.controllers[resourcePath]; ok {
+		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), resourcePath, reflect.TypeOf(controller)))
 	}
-	if _, ok := app.controllers[path]; ok {
-		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), path, reflect.TypeOf(controller)))
+	if _, err := url.Parse(resourcePath); err != nil {
+		panic(fmt.Sprintf("goa: %v - invalid path specification '%s': %v", reflect.TypeOf(controller), resourcePath, err))
 	}
-	if _, err := url.Parse(path); err != nil {
-		panic(fmt.Sprintf("goa: %v - invalid path specification '%s': %v", reflect.TypeOf(controller), path, err))
-	}
-	route := app.router.PathPrefix(path)
+	sub := app.router
 	version := resource.ApiVersion
 	if len(version) != 0 {
-		route = route.Headers("X-Api-Version", version)
+		route := app.router.Headers("X-Api-Version", version)
+		sub = route.Subrouter()
 	}
-	sub := route.Subrouter()
 	finalizeResource(resource)
 	app.routeMap.addRoutes(resource, controller)
-	app.addHandlers(sub, resource, controller)
+	app.addHandlers(sub, resourcePath, resource, controller)
 }
 
 // ServeHTTP dispatches the handler registered in the matched route.
@@ -108,7 +108,7 @@ func (app *app) Handler() negroni.Handler {
 
 // PrintRoutes prints application routes to stdout
 func (app *app) PrintRoutes() {
-	app.routeMap.PrintRoutes()
+	app.routeMap.PrintRoutes(app.basePath)
 }
 
 // validateResource validates resource definition recursively
@@ -155,21 +155,21 @@ func finalizeResource(resource *Resource) {
 }
 
 // Register HTTP handlers for all controller actions
-func (app *app) addHandlers(router *mux.Router, resource *Resource, controller Controller) {
+func (app *app) addHandlers(router *mux.Router, resourcePath string, resource *Resource, controller Controller) {
 	for name, action := range resource.pActions {
 		name = strings.ToUpper(string(name[0])) + name[1:]
 		for _, route := range action.Route.GetRawRoutes() {
 			matcher := router.Methods(route[0])
-			elems := strings.SplitN(route[1], "?", 2)
-			path := elems[0]
-			var query []string
-			if len(elems) > 1 {
-				query = strings.Split(elems[1], "&")
-			}
-			matcher = matcher.Path(path)
-			for _, q := range query {
-				pair := strings.SplitN(q, "=", 2)
-				matcher = matcher.Queries(pair[0], pair[1])
+			actionPath := path.Join(resourcePath, route[1])
+			elems := strings.SplitN(actionPath, "?", 2)
+			actionPath, queryString := elems[0], elems[1]
+			matcher = matcher.Path(actionPath)
+			if len(queryString) > 0 {
+				query := strings.Split(queryString, "&")
+				for _, q := range query {
+					pair := strings.SplitN(q, "=", 2)
+					matcher = matcher.Queries(pair[0], pair[1])
+				}
 			}
 			matcher.HandlerFunc(actionHandlerFunc(name, action, controller))
 		}
