@@ -80,7 +80,7 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 	if hasPayload {
 		ln += 1
 	}
-	args := make([]reflect.Value, ln, ln)
+	args := make([]reflect.Value, ln)
 	for n, p := range request.Params {
 		args[handler.positions[n]] = reflect.ValueOf(p)
 	}

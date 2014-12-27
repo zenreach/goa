@@ -32,8 +32,8 @@ func verbRank(verb string) int {
 // The RouteMap type exposes two public methods WriteRoutes and PrintRoutes that can be called to print the routes
 // for all mounted resource actions.
 type RouteMap struct {
-	base   string
-	routes []*routeData
+	basePath string
+	routes   []*routeData
 }
 
 // Sorted map by action
@@ -62,7 +62,7 @@ func (m *RouteMap) WriteRoutes(writer io.Writer) {
 
 // PrintRoutes prints routes to stdout
 func (m *RouteMap) PrintRoutes(basePath string) {
-	m.base = basePath
+	m.basePath = basePath
 	m.WriteRoutes(os.Stdout)
 }
 
@@ -75,7 +75,7 @@ func (m *RouteMap) addRoutes(resource *Resource, controller Controller) {
 
 // addRoute records a single route
 func (m *RouteMap) addRoute(resource *Resource, action *Action, controller Controller) {
-	prefix := m.base + resource.RoutePrefix
+	prefix := m.basePath + resource.RoutePrefix
 	if len(prefix) == 0 {
 		prefix = "/"
 	}

@@ -116,11 +116,11 @@ func (r *Request) sendResponse(action *Action) {
 		return
 	}
 	w := r.ResponseWriter
+	w.WriteHeader(res.Status())
 	header := w.Header()
 	for name, value := range res.header {
 		header[name] = value
 	}
-	w.WriteHeader(res.status)
 	w.Write([]byte(res.body))
 	parts := res.parts
 	if len(parts) > 0 {

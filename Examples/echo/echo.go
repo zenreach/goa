@@ -39,12 +39,14 @@ func (c *EchoController) Echo(request *Request, value string) {
 	request.Respond(value) // Send 200 response, use "value" param as body
 }
 
+// Listen host and port
+const addr = "localhost:8080"
+
 // Entry point
 func main() {
 	app := New("/api")                      // Create application
-	app.Mount(&EchoController{}, &resource) // Mount resource and corresponding controller
+	app.Mount(&EchoController{}, &resource) // Mount controller and corresponding resource
 	l := log.New(os.Stdout, "[echo] ", 0)
-	addr := "localhost:8080"
 	l.Printf("listening on %s", addr)
 	l.Printf("Routes:")
 	app.PrintRoutes()

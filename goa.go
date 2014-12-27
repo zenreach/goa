@@ -50,7 +50,7 @@ func New(basePath string, handlers ...negroni.Handler) Application {
 	var n *negroni.Negroni
 	if len(handlers) == 0 {
 		// Default handlers a la "Negroni Classic()"
-		logger := &negroni.Logger{log.New(os.Stdout, "[goa] ", 0)}
+		logger := &negroni.Logger{log.New(os.Stdout, "[goa] ", log.Ldate|log.Lmicroseconds)}
 		n = negroni.New(negroni.NewRecovery(), logger, negroni.NewStatic(http.Dir("public")))
 	} else {
 		// Custom handlers
@@ -78,7 +78,10 @@ func (app *app) Mount(controller Controller, resource *Resource) {
 	if err := validateResource(resource); err != nil {
 		panic(fmt.Sprintf("goa: %v - invalid resource: %s", reflect.TypeOf(controller), err.Error()))
 	}
-	resourcePath := path.Join(app.basePath, resource.RoutePrefix)
+	resourcePath := app.basePath
+	if len(resource.RoutePrefix) > 0 {
+		resourcePath = path.Join(resourcePath, resource.RoutePrefix)
+	}
 	if _, ok := app.controllers[resourcePath]; ok {
 		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), resourcePath, reflect.TypeOf(controller)))
 	}
@@ -126,6 +129,7 @@ func (app *app) finalizeResource(resource *Resource) {
 	for an, action := range resource.Actions {
 		responses := make(Responses, len(action.Responses))
 		for n, r := range action.Responses {
+			r.resource = resource
 			responses[n] = r
 		}
 		params := make(Params, len(action.Params))
@@ -162,7 +166,14 @@ func (app *app) addHandlers(router *mux.Router, resourcePath string, resource *R
 		name = strings.ToUpper(string(name[0])) + name[1:]
 		for _, route := range action.Route.GetRawRoutes() {
 			matcher := router.Methods(route[0])
-			actionPath := path.Join(resourcePath, route[1])
+			actionPath := resourcePath
+			if len(route[1]) > 0 {
+				if string(route[1][0]) != "?" {
+					actionPath = path.Join(actionPath, route[1])
+				} else {
+					actionPath += route[1]
+				}
+			}
 			elems := strings.SplitN(actionPath, "?", 2)
 			actionPath, queryString := elems[0], elems[1]
 			matcher = matcher.Path(actionPath)
