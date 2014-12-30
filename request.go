@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-// A controller in go can have any type
+// A goa controller can be anything
 type Controller interface{}
 
 // The ResponseBuilder interface exposes methods use by actions to initialize
@@ -43,9 +43,9 @@ type ResponseBuilder interface {
 	AddPart(partId string) ResponseBuilder
 }
 
-// A goa request includes all the information needed by the controller action
-// to perform. It also implements ResponseBuilder so that actions may use that
-// object to build the action response.
+// A goa request includes all the information needed by the controller action.
+// It also implements ResponseBuilder so that actions may use that object to
+// build the action response.
 // All controller actions take a pointer to a Request struct as first argument.
 type Request struct {
 	// Underlying HTTP request
@@ -109,9 +109,9 @@ func (r *standardResponse) Status() int {
 
 // sendResponse sends the response if GetResponseWriter has not been called,
 // does nothing otherwise.
-func (r *Request) sendResponse(action *Action) {
+func (r *Request) sendResponse(action *compiledAction) {
 	res := r.response
-	if err := action.ValidateResponse(res); err != nil {
+	if err := action.action.ValidateResponse(res); err != nil {
 		r.respondError(500, "InvalidResponse", err)
 		return
 	}

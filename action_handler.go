@@ -6,20 +6,19 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
-	"path"
 	"reflect"
-	"regexp"
 	"strings"
 )
 
 // A action handler implements the standard http HandlerFunc method for a
 // single controller action.
 type actionHandler struct {
-	action       *Action        // Definition of action
-	controller   Controller     // Instance of controller
-	actionMethod reflect.Value  // Action method to be invoked
-	actionName   string         // Action name
-	positions    map[string]int // Position of arguments by attribute name
+	route        *compiledRoute
+	action       *compiledAction // Compiled action
+	hasPayload   bool	     // true if action takes a payload
+	controller   Controller      // Instance of controller
+	actionMethod reflect.Value   // Action method to be invoked
+	actionName   string          // Action name
 }
 
 // Factory method
@@ -32,22 +31,19 @@ type actionHandler struct {
 // Note that this is run once for each action at startup and never again once
 // the service is running. So it's OK for this to be intensive and is a good
 // place to do optimizations for later processing.
-func newActionHandler(name string, action *Action, controller Controller) (*actionHandler, error) {
-	if err := validateAction(name, action, controller); err != nil {
+func newActionHandler(name string, route *compiledRoute, action *compiledAction, controller Controller) (*actionHandler, error) {
+	if err := validateAction(name, action.action, controller); err != nil {
 		return nil, err
 	}
 	actionMethod := reflect.ValueOf(controller).MethodByName(name)
-	if positions, err := computeArgPos(action); err != nil {
-		return nil, err
-	} else {
-		return &actionHandler{
-			action:       action,
-			controller:   controller,
-			actionMethod: actionMethod,
-			actionName:   name,
-			positions:    positions,
-		}, nil
-	}
+	return &actionHandler{
+		route:        route,
+		action:       action,
+		hasPayload:   len(action.action.Payload.Attributes) > 0,
+		controller:   controller,
+		actionMethod: actionMethod,
+		actionName:   name,
+	}, nil
 }
 
 // ServeHTTP implements the standard net/http HandlerFunc function.
@@ -67,8 +63,7 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 	} else {
 		request.Params = params
 	}
-	hasPayload := len(handler.action.pPayload.Attributes) > 0
-	if hasPayload {
+	if handler.hasPayload {
 		if payload, err := handler.loadPayload(req); err != nil {
 			request.respondError(400, "InvalidPayload", err)
 			return
@@ -77,15 +72,15 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 		}
 	}
 	ln := len(request.Params) + 1
-	if hasPayload {
+	if handler.hasPayload {
 		ln += 1
 	}
 	args := make([]reflect.Value, ln)
 	for n, p := range request.Params {
-		args[handler.positions[n]] = reflect.ValueOf(p)
+		args[handler.route.capturePositions[n]] = reflect.ValueOf(p)
 	}
 	args[0] = reflect.ValueOf(request)
-	if hasPayload {
+	if handler.hasPayload {
 		args[1] = reflect.ValueOf(request.Payload)
 	}
 	handler.actionMethod.Call(args)
@@ -110,8 +105,8 @@ func validateAction(name string, action *Action, controller Controller) error {
 		return fmt.Errorf("No method '%s' exposed by controller %v",
 			name, reflect.TypeOf(controller).Elem())
 	}
-	attributes := *action.pParams
-	hasPayload := len(action.pPayload.Attributes) > 0
+	attributes := action.Params
+	hasPayload := len(action.Payload.Attributes) > 0
 	argCount := len(attributes) + 1
 	if hasPayload {
 		argCount += 1
@@ -146,27 +141,6 @@ func validateAction(name string, action *Action, controller Controller) error {
 	return nil
 }
 
-// computeArgPos computes the method argument positions for each parameter.
-// The position of parameters in the action method arguments matches their
-// position in the action route.
-func computeArgPos(action *Action) (map[string]int, error) {
-	// TBD: Make sure all routes define the same captures
-	routes := action.Route.GetRawRoutes()
-	fullPath := path.Join(action.basePath, routes[0][1])
-	positions := make(map[string]int)
-	r := regexp.MustCompile("{([^}]+)}")
-	matches := r.FindAllStringSubmatch(fullPath, -1)
-	hasPayload := len(action.pPayload.Attributes) > 0
-	startPos := 1
-	if hasPayload {
-		startPos = 2
-	}
-	for i, m := range matches {
-		positions[m[1]] = i + startPos
-	}
-	return positions, nil
-}
-
 // toKind returns the reflect.Kind value for a given attribute type
 func toKind(t Type) reflect.Kind {
 	switch t.GetKind() {
@@ -196,7 +170,7 @@ func toKind(t Type) reflect.Kind {
 func (handler *actionHandler) loadParams(request *http.Request) (map[string]interface{}, error) {
 	vars := mux.Vars(request)
 	params := make(map[string]interface{})
-	for name, attr := range *handler.action.pParams {
+	for name, attr := range handler.action.action.Params {
 		val, ok := vars[name]
 		var value interface{}
 		if !ok {
@@ -227,14 +201,14 @@ func (handler *actionHandler) loadPayload(request *http.Request) (interface{}, e
 		return nil, nil
 	}
 	var parsed map[string]interface{}
-	action := handler.action
+	action := handler.action.action
 	contentType := request.Header.Get("Content-Type")
 	if strings.Contains(contentType, "form-urlencoded") {
 		if err := request.ParseForm(); err != nil {
 			return nil, fmt.Errorf("Failed to load form: %s", err.Error())
 		}
 		values := map[string][]string(request.PostForm)
-		for name, attr := range action.pPayload.Attributes {
+		for name, attr := range action.Payload.Attributes {
 			if val, err := handler.loadValue(name, values[name], &attr); err == nil {
 				parsed[name] = val
 			} else {
@@ -266,12 +240,12 @@ func (handler *actionHandler) loadPayload(request *http.Request) (interface{}, e
 	}
 
 	for k, _ := range parsed {
-		_, ok := action.pPayload.Attributes[k]
+		_, ok := action.Payload.Attributes[k]
 		if !ok {
 			return nil, fmt.Errorf("Unknown field '%s' in payload", k)
 		}
 	}
-	payload, err := (*Model)(action.pPayload).Load(parsed)
+	payload, err := (*Model)(&action.Payload).Load(parsed)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load request payload: %s", err.Error())
 	}

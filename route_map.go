@@ -68,8 +68,8 @@ func (m *RouteMap) PrintRoutes(basePath string) {
 
 // addRoutes records routes for given resource definition
 func (m *RouteMap) addRoutes(resource *Resource, controller Controller) {
-	for _, action := range resource.pActions {
-		m.addRoute(resource, action, controller)
+	for _, action := range resource.Actions {
+		m.addRoute(resource, &action, controller)
 	}
 }
 

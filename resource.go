@@ -20,9 +20,6 @@ type Resource struct {
 	RoutePrefix string
 	MediaType   MediaType
 	Actions     map[string]Action
-
-	controller Controller
-	pActions   map[string]*Action // Avoid copying action objects once resource is mounted
 }
 
 // Action definitions define a route which consists of one ore more pairs of HTTP verb and path. They also optionally
@@ -64,15 +61,6 @@ type Action struct {
 	Views       []string
 	Responses   Responses
 	Multipart   int
-
-	// Internal fields (compiled DSL)
-
-	resource   *Resource  // Parent resource definition, initialized by goa
-	pResponses *Responses // Avoid copying response objects once resource is mounted
-	pParams    *Params    // Avoid copying params objects once resource is mounted
-	pPayload   *Payload   // Avoid copying payload objects once resource is mounted
-	pFilters   *Filters   // Avoid copying filter objects once resource is mounted
-	basePath   string     // Base URI to action including app base path and resource route prefix (e.g. "/api/echo")
 }
 
 // DSL
@@ -83,10 +71,10 @@ type Filters Attributes
 
 // ValidateResponse checks that the response content matches one of the action response definitions if any
 func (a *Action) ValidateResponse(res *standardResponse) error {
-	if len(*a.pResponses) == 0 {
+	if len(a.Responses) == 0 {
 		return nil
 	}
-	for _, r := range *a.pResponses {
+	for _, r := range a.Responses {
 		if err := r.Validate(res); err == nil {
 			return nil
 		}

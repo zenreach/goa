@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"reflect"
 	"strings"
 )
@@ -78,15 +77,12 @@ func (app *app) Mount(controller Controller, resource *Resource) {
 	if err := validateResource(resource); err != nil {
 		panic(fmt.Sprintf("goa: %v - invalid resource: %s", reflect.TypeOf(controller), err.Error()))
 	}
-	resourcePath := app.basePath
-	if len(resource.RoutePrefix) > 0 {
-		resourcePath = path.Join(resourcePath, resource.RoutePrefix)
+	cr := compileResource(resource, controller, app.basePath)
+	if _, ok := app.controllers[cr.fullPath]; ok {
+		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), cr.fullPath, reflect.TypeOf(controller)))
 	}
-	if _, ok := app.controllers[resourcePath]; ok {
-		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), resourcePath, reflect.TypeOf(controller)))
-	}
-	if _, err := url.Parse(resourcePath); err != nil {
-		panic(fmt.Sprintf("goa: %v - invalid path specification '%s': %v", reflect.TypeOf(controller), resourcePath, err))
+	if _, err := url.Parse(cr.fullPath); err != nil {
+		panic(fmt.Sprintf("goa: %v - invalid path specification '%s': %v", reflect.TypeOf(controller), cr.fullPath, err))
 	}
 	sub := app.router
 	version := resource.ApiVersion
@@ -94,9 +90,7 @@ func (app *app) Mount(controller Controller, resource *Resource) {
 		route := app.router.Headers("X-Api-Version", version)
 		sub = route.Subrouter()
 	}
-	app.finalizeResource(resource)
-	app.routeMap.addRoutes(resource, controller)
-	app.addHandlers(sub, resourcePath, resource, controller)
+	app.addHandlers(sub, cr, controller)
 }
 
 // ServeHTTP dispatches the handler registered in the matched route.
@@ -123,58 +117,13 @@ func validateResource(resource *Resource) error {
 	return mediaType.Model.Validate()
 }
 
-// finalizeResource links child action and response definitions back to resource definition
-func (app *app) finalizeResource(resource *Resource) {
-	resource.pActions = make(map[string]*Action, len(resource.Actions))
-	for an, action := range resource.Actions {
-		responses := make(Responses, len(action.Responses))
-		for n, r := range action.Responses {
-			r.resource = resource
-			responses[n] = r
-		}
-		params := make(Params, len(action.Params))
-		for n, p := range action.Params {
-			params[n] = p
-		}
-		pPayload := &Payload{
-			Attributes: action.Payload.Attributes,
-			Blueprint:  action.Payload.Blueprint,
-		}
-		filters := make(Filters, len(action.Filters))
-		for n, p := range action.Filters {
-			filters[n] = p
-		}
-		basePath := path.Join(app.basePath, resource.RoutePrefix)
-		resource.pActions[an] = &Action{
-			Name:        an,
-			Description: action.Description,
-			Route:       action.Route,
-			Multipart:   action.Multipart,
-			Views:       action.Views,
-			pParams:     &params,
-			pPayload:    pPayload,
-			pFilters:    &filters,
-			pResponses:  &responses,
-			basePath:    basePath,
-		}
-	}
-}
-
 // Register HTTP handlers for all controller actions
-func (app *app) addHandlers(router *mux.Router, resourcePath string, resource *Resource, controller Controller) {
-	for name, action := range resource.pActions {
+func (app *app) addHandlers(router *mux.Router, resource *compiledResource, controller Controller) {
+	for name, action := range resource.actions {
 		name = strings.ToUpper(string(name[0])) + name[1:]
-		for _, route := range action.Route.GetRawRoutes() {
-			matcher := router.Methods(route[0])
-			actionPath := resourcePath
-			if len(route[1]) > 0 {
-				if string(route[1][0]) != "?" {
-					actionPath = path.Join(actionPath, route[1])
-				} else {
-					actionPath += route[1]
-				}
-			}
-			elems := strings.SplitN(actionPath, "?", 2)
+		for _, route := range action.routes {
+			matcher := router.Methods(route.verb)
+			elems := strings.SplitN(route.path, "?", 2)
 			actionPath, queryString := elems[0], elems[1]
 			matcher = matcher.Path(actionPath)
 			if len(queryString) > 0 {
@@ -184,20 +133,12 @@ func (app *app) addHandlers(router *mux.Router, resourcePath string, resource *R
 					matcher = matcher.Queries(pair[0], pair[1])
 				}
 			}
-			matcher.HandlerFunc(actionHandlerFunc(name, action, controller))
+			// Use closure for great benefits: do not build new handler for every request
+			handler, err := newActionHandler(name, route, action, controller)
+			if err != nil {
+				panic(fmt.Sprintf("goa: %s", err.Error()))
+			}
+			matcher.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handler.ServeHTTP(w, r) })
 		}
-	}
-}
-
-// Single action handler
-// All the logic lies in the actionHandler struct which implements the standard http.HandlerFunc
-func actionHandlerFunc(name string, action *Action, controller Controller) http.HandlerFunc {
-	// Use closure for great benefits: do not build new handler for every request
-	handler, err := newActionHandler(name, action, controller)
-	if err != nil {
-		panic(fmt.Sprintf("goa: %s", err.Error()))
-	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		handler.ServeHTTP(w, r)
 	}
 }
