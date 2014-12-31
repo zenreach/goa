@@ -30,7 +30,7 @@ type Response struct {
 	Parts       *Response // Response part definitions if any
 
 	// Internal fields
-	name        string    // Name used by error messages and documentation
+	name     string    // Name used by error messages and documentation
 	resource *Resource // Parent resource definition
 }
 
@@ -114,9 +114,6 @@ func (d *Response) Validate(r *standardResponse) error {
 		}
 	}
 	media_type := d.MediaType
-	if (&media_type).IsEmpty() {
-		media_type = d.resource.MediaType
-	}
 	id := media_type.Identifier
 	if len(id) > 0 {
 		parsed, _, err := mime.ParseMediaType(id)

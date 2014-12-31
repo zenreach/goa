@@ -49,7 +49,7 @@ var _ = Describe("Attribute", func() {
 			raw := map[string]interface{}{"foo": "1"}
 
 			It("coerces", func() {
-				Ω(composite.Load(raw)).Should(Equal(map[string]interface{}{"foo": int64(1)}))
+				Ω(composite.Load(raw)).Should(Equal(map[string]interface{}{"foo": int(1)}))
 			})
 
 			It("has the right kind", func() {

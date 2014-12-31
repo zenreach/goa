@@ -60,7 +60,7 @@ func (h *Hello) Delete(r *goa.Request, id int) {
 			greetings[i] = greetings[len(greetings)-1]
 			greetings = greetings[0 : len(greetings)-1]
 			found = true
-			r.Respond("")
+			r.Respond("").WithStatus(204)
 			break
 		}
 	}

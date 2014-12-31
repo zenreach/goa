@@ -49,7 +49,7 @@ func main() {
 	l := log.New(os.Stdout, "[echo] ", 0)
 	l.Printf("listening on %s", addr)
 	l.Printf("Routes:")
-	app.PrintRoutes()
+	app.Routes().Log(l)
 	l.Printf("  try with `curl http://%s/api/echo?value=foo`", addr)
 	l.Fatal(http.ListenAndServe(addr, app)) // app implements http.Handlefunc
 }

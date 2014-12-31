@@ -65,7 +65,7 @@ the example above, the following runs the goa app:
     // Launch goa app
     func main() {
        app := goa.New("/echo")                     // Create application
-       app.Mount(&EchoResource, &EchoController{}) // Mount resource and corresponding controller
+       app.Mount(&EchoController{}, &EchoResource) // Mount resource and corresponding controller
        http.ListenAndServe(":80", app)             // Application implements standard http.Handlefunc
     }
 
