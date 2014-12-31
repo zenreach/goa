@@ -9,6 +9,8 @@ type TValue struct {
 
 var HelloResource = Resource{
 
+	Name: "Hello",
+
 	MediaType: HelloMediaType,
 
 	RoutePrefix: "/hello",

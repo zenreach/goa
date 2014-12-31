@@ -211,11 +211,11 @@ func (m *Model) setFieldValue(field, value reflect.Value, fieldName string) erro
 	if err := m.validateFieldKind(field, value.Kind(), fieldName); err != nil {
 		return err
 	}
-	// A coerced value must be one of string, int64, float64, bool, time.Time, array or map of values
+	// A coerced value must be one of string, int, float64, bool, time.Time, array or map of values
 	switch value.Kind() {
 	case reflect.String:
 		field.SetString(value.String())
-	case reflect.Int64:
+	case reflect.Int:
 		i := value.Int()
 		if !field.OverflowInt(i) {
 			field.SetInt(i)

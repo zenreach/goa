@@ -109,7 +109,7 @@ type Kind int
 const (
 	//	Kind                   Go type produced by Load()
 	TString     Kind = iota // string
-	TInteger                // int64
+	TInteger                // int
 	TFloat                  // float64
 	TBoolean                // bool
 	TTime                   // time.Time
@@ -263,28 +263,28 @@ func (b basic) Load(value interface{}) (interface{}, error) {
 	case TInteger:
 		switch value.(type) {
 		case int:
-			return int64(value.(int)), nil
+			return value.(int), nil
 		case uint:
-			return int64(value.(uint)), nil
+			return int(value.(uint)), nil
 		case int8:
-			return int64(value.(int8)), nil
+			return int(value.(int8)), nil
 		case uint8:
-			return int64(value.(uint8)), nil
+			return int(value.(uint8)), nil
 		case int16:
-			return int64(value.(int16)), nil
+			return int(value.(int16)), nil
 		case uint16:
-			return int64(value.(uint16)), nil
+			return int(value.(uint16)), nil
 		case int32:
-			return int64(value.(int32)), nil
+			return int(value.(int32)), nil
 		case uint32:
-			return int64(value.(uint32)), nil
+			return int(value.(uint32)), nil
 		case int64:
-			return int64(value.(int64)), nil
+			return int(value.(int64)), nil
 		case uint64:
-			return int64(value.(uint64)), nil
+			return int(value.(uint64)), nil
 		case string:
 			if res, err := strconv.ParseInt(value.(string), 10, 0); err == nil {
-				return res, nil
+				return int(res), nil
 			}
 		}
 	case TFloat:
@@ -529,14 +529,14 @@ func (c Composite) Load(value interface{}) (interface{}, error) {
 					continue
 				}
 			case TInteger:
-				intVal := val.(int64)
-				if att.MinValue != nil && intVal < att.MinValue.(int64) {
+				intVal := val.(int)
+				if att.MinValue != nil && intVal < att.MinValue.(int) {
 					msg := fmt.Sprintf("integer value given for attribute %s does not match minimum value restriction (value \"%v\" is less than %v)",
 						n, intVal, att.MinValue)
 					errors = append(errors, &IncompatibleValue{value, "Composite", msg})
 					continue
 				}
-				if att.MaxValue != nil && intVal > att.MaxValue.(int64) {
+				if att.MaxValue != nil && intVal > att.MaxValue.(int) {
 					msg := fmt.Sprintf("integer value given for attribute %s does not match maximum value restriction (value \"%v\" is more than %v)",
 						n, intVal, att.MaxValue)
 					errors = append(errors, &IncompatibleValue{value, "Composite", msg})

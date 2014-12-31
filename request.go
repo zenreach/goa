@@ -2,6 +2,7 @@ package goa
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -35,6 +36,8 @@ type Controller interface{}
 type ResponseBuilder interface {
 	// Set response body (empty by default)
 	Respond(body string) ResponseBuilder
+	// Set response body by serializing response into JSON
+	RespondJson(response interface{}) ResponseBuilder
 	// Set response status code (200 by default)
 	WithStatus(status int) ResponseBuilder
 	// Set a response header
@@ -67,6 +70,17 @@ func (r *Request) Respond(body string) ResponseBuilder {
 	return r
 }
 
+// RespondJson sets the response body by serializing response to JSON.
+// It panics if the JSON serialization fails.
+func (r *Request) RespondJson(response interface{}) ResponseBuilder {
+	bytes, err := json.Marshal(response)
+	if err != nil {
+		panic("goa: Failed to serialize JSON response - " + err.Error())
+	}
+	r.response.body = string(bytes)
+	return r
+}
+
 // WithStatus sets the current response status
 func (r *Request) WithStatus(status int) ResponseBuilder {
 	r.response.status = status
@@ -77,6 +91,9 @@ func (r *Request) WithStatus(status int) ResponseBuilder {
 // It returns the controller so that it can be chained with other
 // response builder methods.
 func (r *Request) WithHeader(name, value string) ResponseBuilder {
+	if r.response.header == nil {
+		r.response.header = make(map[string][]string)
+	}
 	r.response.header.Set(name, value)
 	return r
 }

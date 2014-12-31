@@ -23,13 +23,13 @@ import (
 // `PrintRoutes()` method.
 type Application interface {
 	// Mount() adds a controller and associated resource to the application
-	Mount(controller Controller, definition *Resource)
+	Mount(Controller, *Resource)
 	// ServeHTTP() implements http.HandlerFunc
-	ServeHTTP(w http.ResponseWriter, req *http.Request)
+	ServeHTTP(http.ResponseWriter, *http.Request)
 	// Handler() returns a Negroni handler that wraps the application
 	Handler() negroni.Handler
-	// PrintRoutes prints application routes to stdout
-	PrintRoutes()
+	// Routes returns the application route map
+	Routes() *RouteMap
 }
 
 // Internal struct holding application data
@@ -49,8 +49,10 @@ func New(basePath string, handlers ...negroni.Handler) Application {
 	var n *negroni.Negroni
 	if len(handlers) == 0 {
 		// Default handlers a la "Negroni Classic()"
-		logger := &negroni.Logger{log.New(os.Stdout, "[goa] ", log.Ldate|log.Lmicroseconds)}
-		n = negroni.New(negroni.NewRecovery(), logger, negroni.NewStatic(http.Dir("public")))
+		logger := &negroni.Logger{log.New(os.Stdout, "[goa] ",
+			log.Ldate|log.Lmicroseconds)}
+		n = negroni.New(negroni.NewRecovery(), logger,
+			negroni.NewStatic(http.Dir("public")))
 	} else {
 		// Custom handlers
 		n = negroni.New(handlers...)
@@ -77,20 +79,21 @@ func (app *app) Mount(controller Controller, resource *Resource) {
 	if err := validateResource(resource); err != nil {
 		panic(fmt.Sprintf("goa: %v - invalid resource: %s", reflect.TypeOf(controller), err.Error()))
 	}
-	cr := compileResource(resource, controller, app.basePath)
-	if _, ok := app.controllers[cr.fullPath]; ok {
-		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), cr.fullPath, reflect.TypeOf(controller)))
+	compiled := compileResource(resource, controller, app.basePath)
+	if _, ok := app.controllers[compiled.fullPath]; ok {
+		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), compiled.fullPath, reflect.TypeOf(controller)))
 	}
-	if _, err := url.Parse(cr.fullPath); err != nil {
-		panic(fmt.Sprintf("goa: %v - invalid path specification '%s': %v", reflect.TypeOf(controller), cr.fullPath, err))
+	if _, err := url.Parse(compiled.fullPath); err != nil {
+		panic(fmt.Sprintf("goa: %v - invalid path specification '%s': %v", reflect.TypeOf(controller), compiled.fullPath, err))
 	}
-	sub := app.router
+	app.routeMap.addRoutes(compiled, controller)
+	router := app.router
 	version := resource.ApiVersion
 	if len(version) != 0 {
 		route := app.router.Headers("X-Api-Version", version)
-		sub = route.Subrouter()
+		router = route.Subrouter()
 	}
-	app.addHandlers(sub, cr, controller)
+	app.addHandlers(router, compiled, controller)
 }
 
 // ServeHTTP dispatches the handler registered in the matched route.
@@ -104,8 +107,8 @@ func (app *app) Handler() negroni.Handler {
 }
 
 // PrintRoutes prints application routes to stdout
-func (app *app) PrintRoutes() {
-	app.routeMap.PrintRoutes(app.basePath)
+func (app *app) Routes() *RouteMap {
+	return app.routeMap
 }
 
 // validateResource validates resource definition recursively
@@ -124,7 +127,11 @@ func (app *app) addHandlers(router *mux.Router, resource *compiledResource, cont
 		for _, route := range action.routes {
 			matcher := router.Methods(route.verb)
 			elems := strings.SplitN(route.path, "?", 2)
-			actionPath, queryString := elems[0], elems[1]
+			actionPath := elems[0]
+			queryString := ""
+			if len(elems) > 1 {
+				queryString = elems[1]
+			}
 			matcher = matcher.Path(actionPath)
 			if len(queryString) > 0 {
 				query := strings.Split(queryString, "&")
@@ -136,9 +143,26 @@ func (app *app) addHandlers(router *mux.Router, resource *compiledResource, cont
 			// Use closure for great benefits: do not build new handler for every request
 			handler, err := newActionHandler(name, route, action, controller)
 			if err != nil {
-				panic(fmt.Sprintf("goa: %s", err.Error()))
+				panic(fmt.Sprintf("goa: %s\nExpected signature:\n%s", err.Error(), expectedSignature(name, action, controller)))
 			}
 			matcher.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handler.ServeHTTP(w, r) })
 		}
+	}
+}
+
+// String that represents action expected signature for error messages
+func expectedSignature(name string, ca *compiledAction, controller Controller) string {
+	prefix := fmt.Sprintf("func (c %v) %s(r *goa.Request", reflect.TypeOf(controller), name)
+	args := []string{}
+	if ca.hasPayload {
+		args = []string{fmt.Sprintf("p *%v", reflect.TypeOf(ca.action.Payload.Blueprint))}
+	}
+	for n, a := range ca.action.Params {
+		args = append(args, fmt.Sprintf("%s %s", n, toString(a.Type)))
+	}
+	if len(args) > 0 {
+		return fmt.Sprintf("%s, %s)", prefix, strings.Join(args, ", "))
+	} else {
+		return fmt.Sprintf("%s)", prefix)
 	}
 }

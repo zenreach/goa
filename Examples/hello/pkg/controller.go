@@ -15,30 +15,30 @@ var greetings = []greeting{
 type Hello struct{}
 
 // Index
-func (h *Hello) Index(r goa.Request) {
-	r.RespondWithBody("ok", greetings)
+func (h *Hello) Index(r *goa.Request) {
+	r.RespondJson(greetings).
+		WithHeader("Content-Type", "application/vnd.example.hello+json")
 }
 
 // Show
-func (h *Hello) Show(r goa.Request) {
+func (h *Hello) Show(r *goa.Request, id int) {
 	found := false
 	for _, g := range greetings {
-		if g.Id == int(r.ParamInt("id")) {
+		if g.Id == id {
 			found = true
-			r.RespondWithBody("ok", g)
+			r.RespondJson(g).
+				WithHeader("Content-Type", "application/vnd.example.hello+json")
 			break
 		}
 	}
 	if !found {
-		r.RespondEmpty("notFound")
+		r.Respond("").WithStatus(404)
 	}
 }
 
 // Update
-func (h *Hello) Update(r goa.Request) {
+func (h *Hello) Update(r *goa.Request, payload *TValue, id int) {
 	found := false
-	id := int(r.ParamInt("id"))
-	payload := r.Payload().(*TValue)
 	for idx, g := range greetings {
 		if g.Id == id {
 			found = true
@@ -49,23 +49,22 @@ func (h *Hello) Update(r goa.Request) {
 	if !found {
 		greetings = append(greetings, greeting{id, payload.Value})
 	}
-	r.RespondEmpty("noContent")
+	r.Respond("").WithStatus(204)
 }
 
 // Delete
-func (h *Hello) Delete(r goa.Request) {
+func (h *Hello) Delete(r *goa.Request, id int) {
 	found := false
-	id := int(r.ParamInt("id"))
 	for i, g := range greetings {
 		if g.Id == id {
 			greetings[i] = greetings[len(greetings)-1]
 			greetings = greetings[0 : len(greetings)-1]
 			found = true
-			r.RespondEmpty("noContent")
+			r.Respond("")
 			break
 		}
 	}
 	if !found {
-		r.RespondEmpty("notFound")
+		r.Respond("").WithStatus(404)
 	}
 }

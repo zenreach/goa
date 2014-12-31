@@ -1,6 +1,9 @@
 package goa
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Resource definitions describe REST resources exposed by the application API.
 // They can be versioned so that multiple versions can be exposed (usually for backwards compatibility). Clients
@@ -15,6 +18,7 @@ import "fmt"
 // Action definitions list all the actions supported by the resource (both CRUD and other actions), see the Action
 // struct.
 type Resource struct {
+	Name        string
 	Description string
 	ApiVersion  string
 	RoutePrefix string
@@ -74,12 +78,17 @@ func (a *Action) ValidateResponse(res *standardResponse) error {
 	if len(a.Responses) == 0 {
 		return nil
 	}
+	errors := []string{}
 	for _, r := range a.Responses {
 		if err := r.Validate(res); err == nil {
 			return nil
+		} else {
+			errors = append(errors, err.Error())
 		}
 	}
-	return fmt.Errorf("Response %+v does not match any of action '%s' response definitions", res, a.Name)
+	msg := "Response %+v does not match any of action '%s' response" +
+		" definitions:\n  - %s"
+	return fmt.Errorf(msg, res, a.Name, strings.Join(errors, "\n  - "))
 }
 
 // Interface implemented by action route

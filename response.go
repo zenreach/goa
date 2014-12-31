@@ -30,7 +30,7 @@ type Response struct {
 	Parts       *Response // Response part definitions if any
 
 	// Internal fields
-
+	name        string    // Name used by error messages and documentation
 	resource *Resource // Parent resource definition
 }
 
@@ -92,21 +92,24 @@ func (d *Response) Validate(r *standardResponse) error {
 	}
 	if d.Status > 0 {
 		if r.Status() != d.Status {
-			return fmt.Errorf("Value of response status does not match response definition (value is '%v', definition's is '%v')", r.Status(), d.Status)
+			return fmt.Errorf("Response '%s': Value of response status does not match response definition (value is '%v', definition's is '%v')",
+				d.name, r.Status(), d.Status)
 		}
 	}
 	header := r.header
 	if len(d.Location) > 0 {
 		val := header.Get("Location")
 		if !d.matches(val, d.Location) {
-			return fmt.Errorf("Value of response header Location does not match response definition (value is '%s', definition's is '%s')", val, d.Location)
+			return fmt.Errorf("Response '%s': Value of response header Location does not match response definition (value is '%s', definition's is '%s')",
+				d.name, val, d.Location)
 		}
 	}
 	if len(d.Headers) > 0 {
 		for name, value := range d.Headers {
 			val := strings.Join(header[http.CanonicalHeaderKey(name)], ",")
 			if !d.matches(val, value) {
-				return fmt.Errorf("Value of response header %s does not match response definition (value is '%s', definition's is '%s')", name, val, value)
+				return fmt.Errorf("Response '%s': Value of response header %s does not match response definition (value is '%s', definition's is '%s')",
+					d.name, name, val, value)
 			}
 		}
 	}
@@ -118,11 +121,13 @@ func (d *Response) Validate(r *standardResponse) error {
 	if len(id) > 0 {
 		parsed, _, err := mime.ParseMediaType(id)
 		if err != nil {
-			return fmt.Errorf("Invalid media type identifier '%s': %s", id, err.Error())
+			return fmt.Errorf("Response '%s': Invalid media type identifier '%s': %s",
+				d.name, id, err.Error())
 		}
 		val := strings.Join(header["Content-Type"], ",")
 		if parsed != strings.ToLower(val) {
-			return fmt.Errorf("Value of response header Content-Type does not match response definition (value is '%s', definition's is '%s')", val, parsed)
+			return fmt.Errorf("Response '%s': Value of response header Content-Type does not match response definition (value is '%s', definition's is '%s')",
+				d.name, val, parsed)
 		}
 	}
 	if d.Parts != nil {
@@ -130,7 +135,8 @@ func (d *Response) Validate(r *standardResponse) error {
 			if err := d.Parts.Validate(part); err != nil {
 				msg := err.Error()
 				msg = strings.ToLower(string(msg[0])) + msg[1:]
-				return fmt.Errorf("Invalid response part %s, %s", name, msg)
+				return fmt.Errorf("Response '%s': Invalid response part %s, %s",
+					d.name, name, msg)
 			}
 		}
 	}

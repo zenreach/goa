@@ -13,36 +13,23 @@ import (
 // A action handler implements the standard http HandlerFunc method for a
 // single controller action.
 type actionHandler struct {
-	route        *compiledRoute
-	action       *compiledAction // Compiled action
-	hasPayload   bool	     // true if action takes a payload
-	controller   Controller      // Instance of controller
-	actionMethod reflect.Value   // Action method to be invoked
-	actionName   string          // Action name
+	route      *compiledRoute
+	action     *compiledAction // Compiled action
+	controller Controller      // Instance of controller
+	actionName string          // Action name
 }
 
 // Factory method
-// This does 3 things:
-// 1. Validate that the action method name and parameters match the action
-//    definition
-// 2. "Precompile" the action definition into a data structure used to
-//    efficiently map values during requests
-// 3. Build and return a pointer to a actionHandler struct
-// Note that this is run once for each action at startup and never again once
-// the service is running. So it's OK for this to be intensive and is a good
-// place to do optimizations for later processing.
-func newActionHandler(name string, route *compiledRoute, action *compiledAction, controller Controller) (*actionHandler, error) {
-	if err := validateAction(name, action.action, controller); err != nil {
+func newActionHandler(name string, route *compiledRoute, action *compiledAction,
+	controller Controller) (*actionHandler, error) {
+	if err := validateAction(name, action, controller); err != nil {
 		return nil, err
 	}
-	actionMethod := reflect.ValueOf(controller).MethodByName(name)
 	return &actionHandler{
-		route:        route,
-		action:       action,
-		hasPayload:   len(action.action.Payload.Attributes) > 0,
-		controller:   controller,
-		actionMethod: actionMethod,
-		actionName:   name,
+		route:      route,
+		action:     action,
+		controller: controller,
+		actionName: name,
 	}, nil
 }
 
@@ -51,20 +38,21 @@ func newActionHandler(name string, route *compiledRoute, action *compiledAction,
 //   1. Parse and validate request parameters if any
 //   2. Parse and validate request payload (a.k.a. body) if any
 //   3. Call controller method with resulting request struct
-func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	request := &Request{
-		Raw:            req,
+		Raw:            r,
 		ResponseWriter: w,
 		response:       new(standardResponse),
 	}
-	if params, err := handler.loadParams(req); err != nil {
+	if params, err := handler.loadParams(r); err != nil {
 		request.respondError(400, "InvalidParam", err)
 		return
 	} else {
 		request.Params = params
 	}
-	if handler.hasPayload {
-		if payload, err := handler.loadPayload(req); err != nil {
+	hasPayload := handler.action.hasPayload
+	if hasPayload {
+		if payload, err := handler.loadPayload(r); err != nil {
 			request.respondError(400, "InvalidPayload", err)
 			return
 		} else {
@@ -72,7 +60,7 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 		}
 	}
 	ln := len(request.Params) + 1
-	if handler.hasPayload {
+	if hasPayload {
 		ln += 1
 	}
 	args := make([]reflect.Value, ln)
@@ -80,10 +68,11 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 		args[handler.route.capturePositions[n]] = reflect.ValueOf(p)
 	}
 	args[0] = reflect.ValueOf(request)
-	if handler.hasPayload {
+	if hasPayload {
 		args[1] = reflect.ValueOf(request.Payload)
 	}
-	handler.actionMethod.Call(args)
+	meth := reflect.ValueOf(handler.controller).MethodByName(handler.actionName)
+	meth.Call(args)
 	request.sendResponse(handler.action)
 }
 
@@ -95,71 +84,101 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, req *http.Request
 //      number of attributes defined in both the action definition parameters
 //      and payload.
 //   3. Make sure that the type of the method arguments match the type of the
-//      attributes. Note that the match cannot be done using names because
-//      reflect doesn't let us look at the method argument names. Instead we
-//      count that each argument type appears the right number times in the
 //      attributes.
-func validateAction(name string, action *Action, controller Controller) error {
+func validateAction(name string, ca *compiledAction, controller Controller) error {
+	// 1. Make sure there is a method with the right name on the controller
 	actionMethod := reflect.ValueOf(controller).MethodByName(name)
 	if actionMethod.Kind() != reflect.Func {
 		return fmt.Errorf("No method '%s' exposed by controller %v",
 			name, reflect.TypeOf(controller).Elem())
 	}
+
+	// 2. Make sure all routes are consistent (define the same captures)
+	if len(ca.routes) == 0 {
+		return fmt.Errorf("Action %s of resource %s defines no route."+
+			" Please make sure all actions define at least one route.",
+			ca.action.Name, ca.resource.name)
+	}
+	firstCaptures := ca.routes[0].capturePositions
+	numArgs := len(firstCaptures)
+	for i, route := range ca.routes[1:] {
+		if len(route.capturePositions) != numArgs {
+			return fmt.Errorf("Route #%d of action %s of resource"+
+				" %s defines %d captures but first route defines %s."+
+				" Please make sure that all routes of a given action"+
+				" define the same number of captures.",
+				i+1, ca.action.Name, ca.resource.name,
+				len(route.capturePositions), numArgs)
+		}
+		for cap, idx := range route.capturePositions {
+			if fidx, ok := firstCaptures[cap]; !ok {
+				return fmt.Errorf("Route #%d of action %s of"+
+					" resource %s defines capture '%s' but first"+
+					" route does not. Please make sure all routes"+
+					" of a given action define the same captures.",
+					i+1, ca.action.Name, ca.resource.name,
+					cap)
+			} else {
+				if fidx != idx {
+					return fmt.Errorf("Route #%d of action %s of"+
+						" resource %s defines capture '%s' at index"+
+						" %d but first route defines it at index"+
+						" %d. Please make sure all routes of a"+
+						" given action define the same captures.",
+						i+1, ca.action.Name, ca.resource.name,
+						cap, idx, fidx)
+				}
+			}
+		}
+
+	}
+
+	// 3. Make sure it has the right number of arguments
+	action := ca.action
 	attributes := action.Params
-	hasPayload := len(action.Payload.Attributes) > 0
+	hasPayload := ca.hasPayload
 	argCount := len(attributes) + 1
 	if hasPayload {
 		argCount += 1
 	}
 	mType := actionMethod.Type()
 	if argCount != mType.NumIn() {
-		msg := "The action method '%s' has %d argument(s) but the action definition has %d parameter(s)"
+		msg := "Method '%s' of controller %v takes %d argument(s)" +
+			" but action %s of resource %s defines %d parameter(s)"
 		if hasPayload {
 			msg += " and a payload"
 		}
-		msg += ". Please make sure the action method has the correct number of arguments."
-		return fmt.Errorf(msg, name, mType.NumIn(), len(attributes))
+		msg += ". Please make sure the action method has the correct" +
+			" number of arguments."
+		return fmt.Errorf(msg, name, reflect.TypeOf(controller),
+			mType.NumIn(), ca.action.Name, ca.resource.name,
+			len(attributes))
 	}
-	attrKinds := make(map[reflect.Kind]int)
-	for _, v := range attributes {
-		kind := toKind(v.Type)
-		attrKinds[kind] += 1
-	}
-	if hasPayload {
-		attrKinds[reflect.Struct] += 1
-	}
-	methKinds := make(map[reflect.Kind]int)
-	for i := 0; i < mType.NumIn(); i++ {
-		methKinds[mType.In(i).Kind()] += 1
-	}
-	for k, v := range attrKinds {
-		if v != methKinds[k] {
-			return fmt.Errorf("The action parameters and payload define %d attribute(s) of type %v but the action method '%s' defines %v arguments of that type. Make sure these two numbers match.",
-				v, k, name, methKinds[k])
-		}
-	}
+
+	// 4. Validate action method argument types
+	// TBD
 	return nil
 }
 
-// toKind returns the reflect.Kind value for a given attribute type
-func toKind(t Type) reflect.Kind {
+// toString returns the string representation for a given attribute type
+func toString(t Type) string {
 	switch t.GetKind() {
 	case TString:
-		return reflect.String
+		return "string"
 	case TInteger:
-		return reflect.Int
+		return "int"
 	case TFloat:
-		return reflect.Float64
+		return "float64"
 	case TBoolean:
-		return reflect.Bool
+		return "bool"
 	case TTime:
-		return reflect.Struct
+		return "time.Time"
 	case TComposite:
-		return reflect.Struct
+		return "*struct"
 	case TCollection:
-		return reflect.Slice
+		return fmt.Sprintf("[]%s", toString(t.(*Collection).ElemType))
 	case THash:
-		return reflect.Map
+		return fmt.Sprintf("map[string]%s", toString(t.(*Hash).ElemType))
 	}
 	panic(fmt.Sprintf("Unknown type %v", t))
 }

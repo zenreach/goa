@@ -16,15 +16,18 @@ import (
 type compiledResource struct {
 	controller Controller
 	actions    map[string]*compiledAction
+	apiVersion string
 	fullPath   string
+	name       string
 }
 
 // A compiled action uses pointers to refer to its fields and has an associated
 // full path and resource.
 type compiledAction struct {
-	action   *Action
-	resource *compiledResource // Parent resource definition
-	routes   []*compiledRoute  // Base URI to action including app base path and resource route prefix
+	action     *Action
+	hasPayload bool              // true if action accepts a payload, false otherwise.
+	resource   *compiledResource // Parent resource definition
+	routes     []*compiledRoute  // Base URI to action including app base path and resource route prefix
 }
 
 // A compiled route is the full url to an action request and its associated HTTP
@@ -45,12 +48,18 @@ func compileResource(resource *Resource, controller Controller, appPath string) 
 	if len(resource.RoutePrefix) > 0 {
 		resourcePath = path.Join(resourcePath, resource.RoutePrefix)
 	}
-	cr := &compiledResource{controller: controller, fullPath: resourcePath}
-	cr.actions = make(map[string]*compiledAction, len(resource.Actions))
+	compiled := &compiledResource{
+		controller: controller,
+		apiVersion: resource.ApiVersion,
+		fullPath:   resourcePath,
+		name:       resource.Name,
+	}
+	compiled.actions = make(map[string]*compiledAction, len(resource.Actions))
 	for an, action := range resource.Actions {
 		responses := make(Responses, len(action.Responses))
 		for n, r := range action.Responses {
 			r.resource = resource
+			r.name = n
 			responses[n] = r
 		}
 		params := make(Params, len(action.Params))
@@ -67,6 +76,7 @@ func compileResource(resource *Resource, controller Controller, appPath string) 
 		}
 		routes := action.Route.GetRawRoutes()
 		cRoutes := make([]*compiledRoute, len(routes))
+		hasPayload := len(action.Payload.Attributes) > 0
 		for i, r := range routes {
 			actionPath := resourcePath
 			if len(r[1]) > 0 {
@@ -79,7 +89,6 @@ func compileResource(resource *Resource, controller Controller, appPath string) 
 			positions := make(map[string]int)
 			rexp := regexp.MustCompile("{([^}]+)}")
 			matches := rexp.FindAllStringSubmatch(actionPath, -1)
-			hasPayload := len(action.Payload.Attributes) > 0
 			startPos := 1
 			if hasPayload {
 				startPos = 2
@@ -98,12 +107,13 @@ func compileResource(resource *Resource, controller Controller, appPath string) 
 			Filters:   filters,
 			Responses: responses,
 		}
-		cr.actions[an] = &compiledAction{
-			action:   &copy,
-			resource: cr,
-			routes:   cRoutes,
+		compiled.actions[an] = &compiledAction{
+			action:     &copy,
+			hasPayload: hasPayload,
+			resource:   compiled,
+			routes:     cRoutes,
 		}
 	}
 
-	return cr
+	return compiled
 }
