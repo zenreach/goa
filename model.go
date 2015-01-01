@@ -161,6 +161,15 @@ func (m *Model) Load(value interface{}) (interface{}, error) {
 	return val.Interface(), nil
 }
 
+// CanLoad checks whether values of the given go type can be loaded into values
+// of this model.
+// Returns nil if check is successful, error otherwise.
+func (m *Model) CanLoad(t reflect.Type, context string) error {
+	c := Composite(m.Attributes)
+	return c.CanLoad(t, context)
+}
+
+// Validate verifies all model fields recursively.
 func (m *Model) Validate() error {
 	for n, attr := range m.Attributes {
 		if err := attr.Validate(); err != nil {

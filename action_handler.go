@@ -76,15 +76,7 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	request.sendResponse(handler.action)
 }
 
-// validateAction validates the action definition against the controller method
-// It makes the following checks:
-//   1. There is a method on the controller whose name matches the name of the
-//      action.
-//   2. Make sure that the number of arguments on the action method matches the
-//      number of attributes defined in both the action definition parameters
-//      and payload.
-//   3. Make sure that the type of the method arguments match the type of the
-//      attributes.
+// validateAction validates the action definition against the controller method.
 func validateAction(name string, ca *compiledAction, controller Controller) error {
 	// 1. Make sure there is a method with the right name on the controller
 	actionMethod := reflect.ValueOf(controller).MethodByName(name)
@@ -154,9 +146,55 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 			mType.NumIn(), ca.action.Name, ca.resource.name,
 			len(attributes))
 	}
+	if len(firstCaptures) != len(attributes) {
+		msg := "Action %s of resource %s defines %d parameter(s)" +
+			" but route defines %d captures. Please make sure" +
+			" these two numbers match."
+		return fmt.Errorf(msg, ca.action.Name, ca.resource.name,
+			len(attributes), len(firstCaptures))
+	}
 
 	// 4. Validate action method argument types
-	// TBD
+	t := mType.In(0)
+	var dummyRequest *Request
+	if t != reflect.TypeOf(dummyRequest) {
+		msg := "The type of the first argument of method '%s' of" +
+			" controller %v is %v but should be *goa.Request."
+		return fmt.Errorf(msg, name, reflect.TypeOf(controller), t)
+	}
+	if hasPayload {
+		t = mType.In(1).Elem()
+		if err := (*Model)(&ca.action.Payload).CanLoad(t, ""); err != nil {
+			msg := "The type of the second argument of method '%s'" +
+				" of controller %v is %v but should be *%v (%s)."
+			return fmt.Errorf(msg, name, reflect.TypeOf(controller),
+				t, reflect.TypeOf(ca.action.Payload.Blueprint), 
+				err.Error())
+		}
+	}
+	if len(attributes) > 0 {
+		for n, a := range attributes {
+			idx, ok := firstCaptures[n]
+			if !ok {
+				msg := "Action %s of resource %s defines" +
+					" parameter %s but there is no" +
+					" corresponding capture defined in" +
+					" the action route(s)."
+				return fmt.Errorf(msg, ca.action.Name,
+					ca.resource.name, n)
+			}
+			t = mType.In(idx)
+			if err := a.Type.CanLoad(t, ""); err != nil {
+				msg := "Parameter %s of action %s of resource" +
+					" %s is not compatible with the" +
+					" corresponding argument of method '%s'" +
+					" of controller %v - %s"
+				return fmt.Errorf(msg, n, ca.action.Name,
+					ca.resource.name, name,
+					reflect.TypeOf(controller), err.Error())
+			}
+		}
+	}
 	return nil
 }
 
