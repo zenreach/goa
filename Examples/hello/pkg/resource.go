@@ -3,7 +3,7 @@ package hello
 import . "github.com/raphael/goa"
 
 // Update payload data type
-type TValue struct {
+type HelloString struct {
 	Value string `attribute:"value"`
 }
 
@@ -11,16 +11,16 @@ var HelloResource = Resource{
 
 	Name: "Hello",
 
-	MediaType: HelloMediaType,
-
 	RoutePrefix: "/hello",
+
+	MediaType: HelloMediaType,
 
 	Actions: Actions{
 
 		"index": Action{
 			Description: "List all hello strings",
 			Route:       GET(""),
-			Responses:   Responses{"ok": Http.Ok()},
+			Responses:   Responses{"ok": Http.Ok().WithResourceCollection()},
 		},
 
 		"show": Action{
@@ -29,7 +29,21 @@ var HelloResource = Resource{
 			Params: Params{
 				"id": Attribute{Type: Integer, Required: true}, // Inherits other fields from media type attribute
 			},
-			Responses: Responses{"ok": Http.Ok(), "notFound": Http.NotFound()},
+			Responses: Responses{"ok": Http.Ok().WithResource(),
+				"notFound": Http.NotFound()},
+		},
+
+		"create": Action{
+			Description: "Create new hello string",
+			Route:		 POST(""),
+			Payload: Payload{
+				Blueprint: HelloString{},
+				Attributes: Attributes{
+					"value": Attribute{Type: String, Required: true},
+				},
+			},
+			Responses: Responses{"created": Http.Created().
+				WithLocation("//hello/[1-9]+/")},
 		},
 
 		"update": Action{
@@ -39,7 +53,7 @@ var HelloResource = Resource{
 				"id": Attribute{Type: Integer, Required: true},
 			},
 			Payload: Payload{
-				Blueprint: TValue{},
+				Blueprint: HelloString{},
 				Attributes: Attributes{
 					"value": Attribute{
 						Type:        String,

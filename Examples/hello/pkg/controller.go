@@ -1,6 +1,9 @@
 package hello
 
-import "github.com/raphael/goa"
+import(
+	"github.com/raphael/goa"
+	"strconv"
+)
 
 // Hard coded list of hello strings
 var greetings = []greeting{
@@ -17,7 +20,7 @@ type Hello struct{}
 // Index
 func (h *Hello) Index(r *goa.Request) {
 	r.RespondJson(greetings).
-		WithHeader("Content-Type", "application/vnd.example.hello+json")
+		WithHeader("Content-Type", "application/vnd.example.hello+collection+json")
 }
 
 // Show
@@ -36,18 +39,25 @@ func (h *Hello) Show(r *goa.Request, id int) {
 	}
 }
 
+// Create
+func (h *Hello) Create(r *goa.Request, p *HelloString) {
+	id := len(greetings) + 1
+	greetings = append(greetings, greeting{id, p.Value})
+	r.Respond("").WithStatus(201).WithLocation("/hello/" + strconv.Itoa(id))
+}
+
 // Update
-func (h *Hello) Update(r *goa.Request, payload *TValue, id int) {
+func (h *Hello) Update(r *goa.Request, p *HelloString, id int) {
 	found := false
 	for idx, g := range greetings {
 		if g.Id == id {
 			found = true
-			greetings[idx] = greeting{id, payload.Value}
+			greetings[idx] = greeting{id, p.Value}
 			break
 		}
 	}
 	if !found {
-		greetings = append(greetings, greeting{id, payload.Value})
+		greetings = append(greetings, greeting{id, p.Value})
 	}
 	r.Respond("").WithStatus(204)
 }

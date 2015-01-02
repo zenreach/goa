@@ -22,22 +22,33 @@
 // A controller in goa can be any object that exposes methods corresponding to
 // the actions defined in the resource definition. The first argument of the
 // action methods is alway a goa request object. If the action definition
-// specifies a payload for the ation (i.e. if the corresponding HTTP requests
-// have a non-empty body) then the second argument of action methods is a
-// pointer to an instance of the payload blueprint struct. The rest of the
-// arguments contain the values of the action parameters (URL captures and query
-// strings).
+// specifies a payload for the action (i.e. if the corresponding HTTP requests
+// have a non-empty body) then the second argument of action methods contains
+// the payload. The struct containing the payload data is defined in the 
+// resource definition so no cast is required to retrieve the values. The rest
+// of the method arguments contain the values of the action parameters (URL 
+// captures and query strings). The type of the parameters is also provided by
+// the resource definition so no cast is required to retrieve their values as
+// well.
 // The request object passed in the first argument exposes methods that let
-// actions specify the content of the HTTP response.
+// actions specify the content of the HTTP response and access the underlying
+// request and response writer should that be needed.
 //
 // The following is a valid goa resource definition:
 //
 //    // Echo resource
 //    var EchoResource = Resource{                                           // Resource definition
 //       Actions: Actions{                                                   // List of supported actions
-//          "echo": Action{                                                  // Only one action "echo"
+//          "echo": Action{                                                  // Action "echo" echoes the "value" query string
 //             Route: GET("?value={value}"),                                 // Capture param in "value"
 //             Params: Params{"value": Param{Type: String, Required: true}}, // Query string "value" is a string and must be provided
+//             Responses: Responses{"ok": Http.Ok()},                        // Only one possible response for this action
+//          },
+//          "echo_payload": Action{                                          // Action "echo_payload" echoes the request body
+//             Route: POST(""),                                              // Uses a POST request
+//             Payload: Payload{                                             // Payload description
+//                 Blueprint: ValueContainer{},                              // Struct cloned and initialized with request body
+//                 Attributes: {"value": Attribute{Type: String, Required: true}}, // Description of payload attributes
 //             Responses: Responses{"ok": Http.Ok()},                        // Only one possible response for this action
 //          },
 //       },
@@ -46,14 +57,28 @@
 // And the following a controller that implements it:
 //
 //    // Echo controller
-//    type EchoController struct {}
+//    type EchoController struct{}
 //
 //    // Implementation of "echo" action
-//    func (e* echoController) Echo(r *Request, value string) {
+//    // First argument is goa request, second argument is first parameter
+//    // (the echo action does not define a payload)
+//    func (e* EchoController) Echo(r *Request, value string) {
 //       r.Respond(value)
 //    }
 //
-// Controller are mounted onto a goa application using the `Mount()` method.
+//    // Payload struct definition
+//    // Only one payload attribute "value" mapped to "Value" struct field
+//    type ValueContainer struct {
+//        Value string `attribute:"value"`
+//    }
+//
+//    // Implementation of "echo_payload" action
+//    // First argument is goa request, second argument is payload
+//    func (e* EchoController) EchoPayload(r *Request, payload *ValueContainer) {
+//       r.Respond(payload.Value)
+//    }
+//
+// Controllers are mounted onto a goa application using the `Mount()` method.
 // Taking the example above, the following runs the goa app:
 //
 //    // Launch goa app

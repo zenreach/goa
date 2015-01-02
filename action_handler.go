@@ -168,7 +168,7 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 			msg := "The type of the second argument of method '%s'" +
 				" of controller %v is %v but should be *%v (%s)."
 			return fmt.Errorf(msg, name, reflect.TypeOf(controller),
-				t, reflect.TypeOf(ca.action.Payload.Blueprint), 
+				t, reflect.TypeOf(ca.action.Payload.Blueprint),
 				err.Error())
 		}
 	}

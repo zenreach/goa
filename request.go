@@ -40,6 +40,8 @@ type ResponseBuilder interface {
 	RespondJson(response interface{}) ResponseBuilder
 	// Set response status code (200 by default)
 	WithStatus(status int) ResponseBuilder
+	// Set response "Location" header
+	WithLocation(location string) ResponseBuilder
 	// Set a response header
 	WithHeader(name, value string) ResponseBuilder
 	// Add a multipart response part
@@ -85,6 +87,11 @@ func (r *Request) RespondJson(response interface{}) ResponseBuilder {
 func (r *Request) WithStatus(status int) ResponseBuilder {
 	r.response.status = status
 	return r
+}
+
+// WithLocation sets the current response location header
+func (r *Request) WithLocation(location string) ResponseBuilder {
+	return r.WithHeader("Location", location)
 }
 
 // WithHeader sets a header on the current response

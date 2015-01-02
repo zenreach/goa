@@ -55,11 +55,26 @@ func compileResource(resource *Resource, controller Controller, appPath string) 
 		name:       resource.Name,
 	}
 	compiled.actions = make(map[string]*compiledAction, len(resource.Actions))
+	reg := regexp.MustCompile("(.*)(\\+.*)")
 	for an, action := range resource.Actions {
 		responses := make(Responses, len(action.Responses))
 		for n, r := range action.Responses {
 			r.resource = resource
 			r.name = n
+			if r.MediaType.Identifier == "Resource" {
+				r.MediaType = resource.MediaType
+			} else if r.MediaType.Identifier == "ResourceCollection" {
+				r.MediaType = resource.MediaType
+				// The below may need tweaking, for now just insert "+collection"
+				// in the media type identifier.
+				id := r.MediaType.Identifier
+				if reg.MatchString(id) {
+					r.MediaType.Identifier = reg.ReplaceAllString(id, "$1+collection$2")
+				} else {
+					r.MediaType.Identifier = id + "+collection"
+				}
+				r.MediaType.Description += " (collection)"
+			}
 			responses[n] = r
 		}
 		params := make(Params, len(action.Params))

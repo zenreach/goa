@@ -205,7 +205,7 @@ func (e *IncompatibleType) Error() string {
 	if len(e.context) > 0 {
 		prefix = e.context + " "
 	}
-	return fmt.Sprintf(prefix + "cannot be assigned values of type %v%s", 
+	return fmt.Sprintf(prefix+"cannot be assigned values of type %v%s",
 		e.to, extra)
 }
 

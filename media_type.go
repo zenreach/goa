@@ -211,3 +211,21 @@ func (m *MediaType) GetKind() Kind {
 
 // Media type Type kind
 const TMediaType Kind = _TLast
+
+// Marker for media type inherited from resource
+// Substituted with actual resource media type upon "compilation"
+func resourceMediaType() MediaType {
+	return MediaType{
+		Identifier: "Resource",
+		Description: "Resource media type",
+	}
+}
+
+// Media type inherited from resource for collection
+// Substituted with actual resource collection media type upon "compilation"
+func resourceCollectionMediaType() MediaType {
+	return MediaType{
+		Identifier: "ResourceCollection",
+		Description: "Resource collection media type",
+	}
+}
