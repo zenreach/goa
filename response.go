@@ -1,7 +1,6 @@
 package goa
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 )
