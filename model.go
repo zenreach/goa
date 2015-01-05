@@ -46,7 +46,7 @@ import (
 type Model struct {
 	Attributes     Attributes
 	Blueprint      interface{}
-	fieldNameByAtt *map[string]string // Internal mapping of blueprint field name to attribute name
+	fieldNameByAtt map[string]string // Internal mapping of blueprint field name to attribute name
 }
 
 // Create new model definition given named attributes and a blueprint
@@ -54,7 +54,7 @@ type Model struct {
 // the attributes.
 func NewModel(attributes Attributes, blueprint interface{}) (*Model, error) {
 	bpType := reflect.TypeOf(blueprint)
-	if bpType.Kind() != reflect.Struct {
+	if bpType == nil || bpType.Kind() != reflect.Struct {
 		msg := fmt.Sprintf("Blueprint must be a struct. Given value was a %v.", bpType)
 		return nil, NewArgumentError(msg, "blueprint", blueprint)
 	}
@@ -190,11 +190,11 @@ func (m *Model) initData(data reflect.Value, value reflect.Value, attPrefix stri
 		if len(attPrefix) > 0 {
 			key = attPrefix + "." + key
 		}
-		fieldName, _ := (*m.fieldNameByAtt)[key]
+		fieldName, _ := m.fieldNameByAtt[key]
 		f := data.FieldByName(fieldName)
 		if !f.IsValid() {
-			return NewErrorf("There is no model attribute named '%s' but argument given to Load() contains a key '%s' with value %v",
-				key, key, f.Interface())
+			return NewErrorf("There is no model attribute named '%s' but argument given to Load() contains a key '%s' with value '%v'",
+				key, key, value.MapIndex(k).Interface())
 		}
 		if !f.CanSet() {
 			return NewErrorf("Field '%s' cannot be written to, is it public?", fieldName)
@@ -259,7 +259,7 @@ func (m *Model) validateFieldKind(field reflect.Value, kind reflect.Kind, name s
 
 // Create map of blueprint struct field names indexed by attribute name
 // Used to lookup field name when loading data
-func mapFieldNames(blueprint reflect.Type, prefix string) *map[string]string {
+func mapFieldNames(blueprint reflect.Type, prefix string) map[string]string {
 	fieldNameByAtt := make(map[string]string)
 	for i := 0; i < blueprint.NumField(); i++ {
 		field := blueprint.Field(i)
@@ -270,13 +270,12 @@ func mapFieldNames(blueprint reflect.Type, prefix string) *map[string]string {
 		fieldNameByAtt[attName] = field.Name
 		if field.Type.Kind() == reflect.Struct {
 			subMap := mapFieldNames(field.Type, attName)
-			for k, v := range *subMap {
+			for k, v := range subMap {
 				fieldNameByAtt[k] = v
 			}
 		}
 	}
-
-	return &fieldNameByAtt
+	return fieldNameByAtt
 }
 
 // Retrieve name of attribute that corresponds to blueprint struct field

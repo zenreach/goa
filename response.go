@@ -1,10 +1,10 @@
 package goa
 
-import "fmt"
-import "regexp"
-import "mime"
-import "strings"
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+	"regexp"
+)
 
 // Response header definitions, map of definitions keyed by header name. There
 // are two kinds of definitions:
@@ -28,10 +28,6 @@ type Response struct {
 	Location    string    // Response 'Location' header validation, enclose value in / for regexp behavior
 	Headers     Headers   // Response header validations, enclose values in / for regexp behavior
 	Parts       *Response // Response part definitions if any
-
-	// Internal fields
-	name     string    // Name used by error messages and documentation
-	resource *Resource // Parent resource definition
 }
 
 // WithMediaType sets the response MediaType field.
@@ -73,62 +69,6 @@ func (r Response) WithHeader(name string, validation string) Response {
 	}
 	r.Headers[name] = validation
 	return r
-}
-
-// Validate validates a response against its definition.
-// It returns an error if validation fails, nil otherwise.
-func (d *Response) Validate(r *standardResponse) error {
-	if d.Status == 500 {
-		return nil // Already an error, protect against infinite loops
-	}
-	if d.Status > 0 {
-		if r.Status() != d.Status {
-			return fmt.Errorf("Response '%s': Value of response status does not match response definition (value is '%v', definition's is '%v')",
-				d.name, r.Status(), d.Status)
-		}
-	}
-	header := r.header
-	if len(d.Location) > 0 {
-		val := header.Get("Location")
-		if !d.matches(val, d.Location) {
-			return fmt.Errorf("Response '%s': Value of response header Location does not match response definition (value is '%s', definition's is '%s')",
-				d.name, val, d.Location)
-		}
-	}
-	if len(d.Headers) > 0 {
-		for name, value := range d.Headers {
-			val := strings.Join(header[http.CanonicalHeaderKey(name)], ",")
-			if !d.matches(val, value) {
-				return fmt.Errorf("Response '%s': Value of response header %s does not match response definition (value is '%s', definition's is '%s')",
-					d.name, name, val, value)
-			}
-		}
-	}
-	media_type := d.MediaType
-	id := media_type.Identifier
-	if len(id) > 0 {
-		parsed, _, err := mime.ParseMediaType(id)
-		if err != nil {
-			return fmt.Errorf("Response '%s': Invalid media type identifier '%s': %s",
-				d.name, id, err.Error())
-		}
-		val := strings.Join(header["Content-Type"], ",")
-		if parsed != strings.ToLower(val) {
-			return fmt.Errorf("Response '%s': Value of response header Content-Type does not match response definition (value is '%s', definition's is '%s')",
-				d.name, val, parsed)
-		}
-	}
-	if d.Parts != nil {
-		for name, part := range r.parts {
-			if err := d.Parts.Validate(part); err != nil {
-				msg := err.Error()
-				msg = strings.ToLower(string(msg[0])) + msg[1:]
-				return fmt.Errorf("Response '%s': Invalid response part %s, %s",
-					d.name, name, msg)
-			}
-		}
-	}
-	return nil
 }
 
 // Provide helper methods for creating HTTP response from status
@@ -191,7 +131,7 @@ func (d *Response) matches(value, match string) bool {
 	ok := false
 	matches := matchRegexp.FindStringSubmatch(match)
 	if len(matches) > 0 {
-		ok, _ = regexp.MatchString(value, matches[1])
+		ok, _ = regexp.MatchString(matches[1], value)
 	} else {
 		ok = (value == match)
 	}

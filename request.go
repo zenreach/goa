@@ -135,16 +135,16 @@ func (r *standardResponse) Status() int {
 // does nothing otherwise.
 func (r *Request) sendResponse(action *compiledAction) {
 	res := r.response
-	if err := action.action.ValidateResponse(res); err != nil {
+	if err := action.ValidateResponse(res); err != nil {
 		r.respondError(500, "InvalidResponse", err)
 		return
 	}
 	w := r.ResponseWriter
-	w.WriteHeader(res.Status())
 	header := w.Header()
 	for name, value := range res.header {
 		header[name] = value
 	}
+	w.WriteHeader(res.Status())
 	w.Write([]byte(res.body))
 	parts := res.parts
 	if len(parts) > 0 {

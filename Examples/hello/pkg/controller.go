@@ -1,6 +1,6 @@
 package hello
 
-import(
+import (
 	"github.com/raphael/goa"
 	"strconv"
 )
@@ -41,9 +41,17 @@ func (h *Hello) Show(r *goa.Request, id int) {
 
 // Create
 func (h *Hello) Create(r *goa.Request, p *HelloString) {
-	id := len(greetings) + 1
-	greetings = append(greetings, greeting{id, p.Value})
-	r.Respond("").WithStatus(201).WithLocation("/hello/" + strconv.Itoa(id))
+	new_id := 1
+	for ok := false; !ok; new_id += 1 {
+		for id, _ := range greetings {
+			ok = id != new_id
+			if !ok {
+				break
+			}
+		}
+	}
+	greetings = append(greetings, greeting{new_id, p.Value})
+	r.Respond("").WithStatus(201).WithLocation("/hello/" + strconv.Itoa(new_id))
 }
 
 // Update

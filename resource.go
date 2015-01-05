@@ -1,10 +1,5 @@
 package goa
 
-import (
-	"fmt"
-	"strings"
-)
-
 // Resource definitions describe REST resources exposed by the application API.
 // They can be versioned so that multiple versions can be exposed (usually for backwards compatibility). Clients
 // specify the version they want to use through the X-API-VERSION request header. If an api version is specified in the
@@ -72,24 +67,6 @@ type Action struct {
 type Params Attributes
 type Payload Model
 type Filters Attributes
-
-// ValidateResponse checks that the response content matches one of the action response definitions if any
-func (a *Action) ValidateResponse(res *standardResponse) error {
-	if len(a.Responses) == 0 {
-		return nil
-	}
-	errors := []string{}
-	for _, r := range a.Responses {
-		if err := r.Validate(res); err == nil {
-			return nil
-		} else {
-			errors = append(errors, err.Error())
-		}
-	}
-	msg := "Response %+v does not match any of action '%s' response" +
-		" definitions:\n  - %s"
-	return fmt.Errorf(msg, res, a.Name, strings.Join(errors, "\n  - "))
-}
 
 // Interface implemented by action route
 type Route interface {

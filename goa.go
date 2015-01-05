@@ -79,7 +79,10 @@ func (app *app) Mount(controller Controller, resource *Resource) {
 	if err := validateResource(resource); err != nil {
 		panic(fmt.Sprintf("goa: %v - invalid resource: %s", reflect.TypeOf(controller), err.Error()))
 	}
-	compiled := compileResource(resource, controller, app.basePath)
+	compiled, err := compileResource(resource, controller, app.basePath)
+	if err != nil {
+		panic(fmt.Sprintf("goa: %v - invalid resource: %s", reflect.TypeOf(controller), err.Error()))
+	}
 	if _, ok := app.controllers[compiled.fullPath]; ok {
 		panic(fmt.Sprintf("goa: %v - controller already mounted under %s (%v)", reflect.TypeOf(controller), compiled.fullPath, reflect.TypeOf(controller)))
 	}
@@ -154,10 +157,10 @@ func (app *app) addHandlers(router *mux.Router, resource *compiledResource, cont
 func expectedSignature(name string, ca *compiledAction, controller Controller) string {
 	prefix := fmt.Sprintf("func (c %v) %s(r *goa.Request", reflect.TypeOf(controller), name)
 	args := []string{}
-	if ca.hasPayload {
-		args = []string{fmt.Sprintf("p *%v", reflect.TypeOf(ca.action.Payload.Blueprint))}
+	if ca.payload != nil {
+		args = []string{fmt.Sprintf("p *%v", reflect.TypeOf(ca.payload.Blueprint))}
 	}
-	for n, a := range ca.action.Params {
+	for n, a := range ca.params {
 		args = append(args, fmt.Sprintf("%s %s", n, toString(a.Type)))
 	}
 	if len(args) > 0 {

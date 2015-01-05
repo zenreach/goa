@@ -17,6 +17,7 @@ type actionHandler struct {
 	action     *compiledAction // Compiled action
 	controller Controller      // Instance of controller
 	actionName string          // Action name
+	method     reflect.Value   // Action controller method
 }
 
 // Factory method
@@ -30,6 +31,7 @@ func newActionHandler(name string, route *compiledRoute, action *compiledAction,
 		action:     action,
 		controller: controller,
 		actionName: name,
+		method:     reflect.ValueOf(controller).MethodByName(name),
 	}, nil
 }
 
@@ -50,8 +52,7 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	} else {
 		request.Params = params
 	}
-	hasPayload := handler.action.hasPayload
-	if hasPayload {
+	if handler.action.payload != nil {
 		if payload, err := handler.loadPayload(r); err != nil {
 			request.respondError(400, "InvalidPayload", err)
 			return
@@ -60,7 +61,7 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	ln := len(request.Params) + 1
-	if hasPayload {
+	if handler.action.payload != nil {
 		ln += 1
 	}
 	args := make([]reflect.Value, ln)
@@ -68,11 +69,10 @@ func (handler *actionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		args[handler.route.capturePositions[n]] = reflect.ValueOf(p)
 	}
 	args[0] = reflect.ValueOf(request)
-	if hasPayload {
+	if handler.action.payload != nil {
 		args[1] = reflect.ValueOf(request.Payload)
 	}
-	meth := reflect.ValueOf(handler.controller).MethodByName(handler.actionName)
-	meth.Call(args)
+	handler.method.Call(args)
 	request.sendResponse(handler.action)
 }
 
@@ -89,7 +89,7 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 	if len(ca.routes) == 0 {
 		return fmt.Errorf("Action %s of resource %s defines no route."+
 			" Please make sure all actions define at least one route.",
-			ca.action.Name, ca.resource.name)
+			ca.name, ca.resource.name)
 	}
 	firstCaptures := ca.routes[0].capturePositions
 	numArgs := len(firstCaptures)
@@ -99,7 +99,7 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 				" %s defines %d captures but first route defines %s."+
 				" Please make sure that all routes of a given action"+
 				" define the same number of captures.",
-				i+1, ca.action.Name, ca.resource.name,
+				i+1, ca.name, ca.resource.name,
 				len(route.capturePositions), numArgs)
 		}
 		for cap, idx := range route.capturePositions {
@@ -108,7 +108,7 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 					" resource %s defines capture '%s' but first"+
 					" route does not. Please make sure all routes"+
 					" of a given action define the same captures.",
-					i+1, ca.action.Name, ca.resource.name,
+					i+1, ca.name, ca.resource.name,
 					cap)
 			} else {
 				if fidx != idx {
@@ -117,7 +117,7 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 						" %d but first route defines it at index"+
 						" %d. Please make sure all routes of a"+
 						" given action define the same captures.",
-						i+1, ca.action.Name, ca.resource.name,
+						i+1, ca.name, ca.resource.name,
 						cap, idx, fidx)
 				}
 			}
@@ -126,31 +126,29 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 	}
 
 	// 3. Make sure it has the right number of arguments
-	action := ca.action
-	attributes := action.Params
-	hasPayload := ca.hasPayload
+	attributes := ca.params
 	argCount := len(attributes) + 1
-	if hasPayload {
+	if ca.payload != nil {
 		argCount += 1
 	}
 	mType := actionMethod.Type()
 	if argCount != mType.NumIn() {
 		msg := "Method '%s' of controller %v takes %d argument(s)" +
 			" but action %s of resource %s defines %d parameter(s)"
-		if hasPayload {
+		if ca.payload != nil {
 			msg += " and a payload"
 		}
 		msg += ". Please make sure the action method has the correct" +
 			" number of arguments."
 		return fmt.Errorf(msg, name, reflect.TypeOf(controller),
-			mType.NumIn(), ca.action.Name, ca.resource.name,
+			mType.NumIn(), ca.name, ca.resource.name,
 			len(attributes))
 	}
 	if len(firstCaptures) != len(attributes) {
 		msg := "Action %s of resource %s defines %d parameter(s)" +
 			" but route defines %d captures. Please make sure" +
 			" these two numbers match."
-		return fmt.Errorf(msg, ca.action.Name, ca.resource.name,
+		return fmt.Errorf(msg, ca.name, ca.resource.name,
 			len(attributes), len(firstCaptures))
 	}
 
@@ -162,13 +160,13 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 			" controller %v is %v but should be *goa.Request."
 		return fmt.Errorf(msg, name, reflect.TypeOf(controller), t)
 	}
-	if hasPayload {
+	if ca.payload != nil {
 		t = mType.In(1).Elem()
-		if err := (*Model)(&ca.action.Payload).CanLoad(t, ""); err != nil {
+		if err := ca.payload.CanLoad(t, ""); err != nil {
 			msg := "The type of the second argument of method '%s'" +
 				" of controller %v is %v but should be *%v (%s)."
 			return fmt.Errorf(msg, name, reflect.TypeOf(controller),
-				t, reflect.TypeOf(ca.action.Payload.Blueprint),
+				t, reflect.TypeOf(ca.payload.Blueprint),
 				err.Error())
 		}
 	}
@@ -180,7 +178,7 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 					" parameter %s but there is no" +
 					" corresponding capture defined in" +
 					" the action route(s)."
-				return fmt.Errorf(msg, ca.action.Name,
+				return fmt.Errorf(msg, ca.name,
 					ca.resource.name, n)
 			}
 			t = mType.In(idx)
@@ -189,7 +187,7 @@ func validateAction(name string, ca *compiledAction, controller Controller) erro
 					" %s is not compatible with the" +
 					" corresponding argument of method '%s'" +
 					" of controller %v - %s"
-				return fmt.Errorf(msg, n, ca.action.Name,
+				return fmt.Errorf(msg, n, ca.name,
 					ca.resource.name, name,
 					reflect.TypeOf(controller), err.Error())
 			}
@@ -227,7 +225,7 @@ func toString(t Type) string {
 func (handler *actionHandler) loadParams(request *http.Request) (map[string]interface{}, error) {
 	vars := mux.Vars(request)
 	params := make(map[string]interface{})
-	for name, attr := range handler.action.action.Params {
+	for name, attr := range handler.action.params {
 		val, ok := vars[name]
 		var value interface{}
 		if !ok {
@@ -258,14 +256,15 @@ func (handler *actionHandler) loadPayload(request *http.Request) (interface{}, e
 		return nil, nil
 	}
 	var parsed map[string]interface{}
-	action := handler.action.action
+	action := handler.action
+	payload := action.payload
 	contentType := request.Header.Get("Content-Type")
 	if strings.Contains(contentType, "form-urlencoded") {
 		if err := request.ParseForm(); err != nil {
-			return nil, fmt.Errorf("Failed to load form: %s", err.Error())
+			return nil, fmt.Errorf("Failed to load request body: %s", err.Error())
 		}
 		values := map[string][]string(request.PostForm)
-		for name, attr := range action.Payload.Attributes {
+		for name, attr := range payload.Attributes {
 			if val, err := handler.loadValue(name, values[name], &attr); err == nil {
 				parsed[name] = val
 			} else {
@@ -297,17 +296,17 @@ func (handler *actionHandler) loadPayload(request *http.Request) (interface{}, e
 	}
 
 	for k, _ := range parsed {
-		_, ok := action.Payload.Attributes[k]
+		_, ok := payload.Attributes[k]
 		if !ok {
 			return nil, fmt.Errorf("Unknown field '%s' in payload", k)
 		}
 	}
-	payload, err := (*Model)(&action.Payload).Load(parsed)
+	p, err := payload.Load(parsed)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load request payload: %s", err.Error())
 	}
 
-	return payload, nil
+	return p, nil
 }
 
 // loadValue loads a single value given a name, an incoming value and an

@@ -4,8 +4,8 @@ import . "github.com/raphael/goa"
 
 // Go type used to build media type instances
 type greeting struct {
-	Id   int    `json:"id"`
-	Text string `json:"text"`
+	Id   int    `json:"id" attribute:"id"`
+	Text string `json:"text" attribute:"text"`
 }
 
 // Media type definition

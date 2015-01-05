@@ -2,7 +2,7 @@ package hello
 
 import . "github.com/raphael/goa"
 
-// Update payload data type
+// Create and update payload data type
 type HelloString struct {
 	Value string `attribute:"value"`
 }
@@ -35,7 +35,7 @@ var HelloResource = Resource{
 
 		"create": Action{
 			Description: "Create new hello string",
-			Route:		 POST(""),
+			Route:       POST(""),
 			Payload: Payload{
 				Blueprint: HelloString{},
 				Attributes: Attributes{
@@ -43,7 +43,7 @@ var HelloResource = Resource{
 				},
 			},
 			Responses: Responses{"created": Http.Created().
-				WithLocation("//hello/[1-9]+/")},
+				WithLocation("//hello/[0-9]+/")},
 		},
 
 		"update": Action{

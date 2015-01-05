@@ -216,7 +216,7 @@ const TMediaType Kind = _TLast
 // Substituted with actual resource media type upon "compilation"
 func resourceMediaType() MediaType {
 	return MediaType{
-		Identifier: "Resource",
+		Identifier:  "Resource",
 		Description: "Resource media type",
 	}
 }
@@ -225,7 +225,7 @@ func resourceMediaType() MediaType {
 // Substituted with actual resource collection media type upon "compilation"
 func resourceCollectionMediaType() MediaType {
 	return MediaType{
-		Identifier: "ResourceCollection",
+		Identifier:  "ResourceCollection",
 		Description: "Resource collection media type",
 	}
 }

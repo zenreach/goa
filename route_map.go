@@ -78,7 +78,7 @@ func (m *RouteMap) addRoute(resource *compiledResource, action *compiledAction,
 			Version:    version,
 			Verb:       route.verb,
 			Path:       route.path,
-			Action:     action.action.Name,
+			Action:     action.name,
 			Controller: fmt.Sprintf("%v", reflect.TypeOf(controller).Elem()),
 		}
 		m.Routes = append(m.Routes, &r)

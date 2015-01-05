@@ -24,9 +24,9 @@
 // action methods is alway a goa request object. If the action definition
 // specifies a payload for the action (i.e. if the corresponding HTTP requests
 // have a non-empty body) then the second argument of action methods contains
-// the payload. The struct containing the payload data is defined in the 
+// the payload. The struct containing the payload data is defined in the
 // resource definition so no cast is required to retrieve the values. The rest
-// of the method arguments contain the values of the action parameters (URL 
+// of the method arguments contain the values of the action parameters (URL
 // captures and query strings). The type of the parameters is also provided by
 // the resource definition so no cast is required to retrieve their values as
 // well.
