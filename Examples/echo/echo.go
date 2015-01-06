@@ -30,9 +30,7 @@ var resource = Resource{
 }
 
 // Controller struct
-type EchoController struct {
-	Controller
-}
+type EchoController struct{}
 
 // Action implementation
 func (c *EchoController) Echo(request *Request, value string) {

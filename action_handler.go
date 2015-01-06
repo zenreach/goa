@@ -207,7 +207,7 @@ func toString(t Type) string {
 		return "float64"
 	case TBoolean:
 		return "bool"
-	case TTime:
+	case TDateTime:
 		return "time.Time"
 	case TComposite:
 		return "*struct"

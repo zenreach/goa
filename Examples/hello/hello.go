@@ -34,11 +34,13 @@ func main() {
 	app.Routes().Log(l)
 	l.Printf("\n")
 	l.Printf("---------------------------------------------------------------------------------")
-	l.Printf("  index  with `curl http://%s/api/hello`", addr)
-	l.Printf("  show   with `curl http://%s/api/hello/1`", addr)
-	l.Printf("  create with `curl -X POST -d '{\"value\":\"foo\"}' -H 'Content-Type:application/json' http://%s/api/hello`", addr)
-	l.Printf("  update with `curl -X PUT -d '{\"value\":\"foo\"}' -H 'Content-Type:application/json' http://%s/api/hello/1`", addr)
-	l.Printf("  delete with `curl -X DELETE http://%s/api/hello/1`", addr)
+	l.Printf("  index   `curl http://%s/api/hello`", addr)
+	l.Printf("  show    `curl http://%s/api/hello/1`", addr)
+	l.Printf("  create: `curl -X POST -d '{\"value\":\"foo\"}'\\\n" +
+                 "                   -H 'Content-Type:application/json' http://%s/api/hello`", addr)
+	l.Printf("  update: `curl -X PUT -d '{\"value\":\"foo\"}'\\\n" +
+	         "                   -H 'Content-Type:application/json' http://%s/api/hello/1`", addr)
+	l.Printf("  delete: `curl -X DELETE http://%s/api/hello/1`", addr)
 	l.Printf("---------------------------------------------------------------------------------")
 
 	l.Fatal(http.ListenAndServe(addr, app)) // Application implements standard http.Handlefunc

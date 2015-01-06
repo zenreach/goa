@@ -29,8 +29,6 @@ var postResource = Resource{
 
 	RoutePrefix: "/v3/posts",
 
-	Controller: postController,
-
 	MediaType: postMediaType,
 
 	Actions: Actions{

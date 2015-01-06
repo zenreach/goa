@@ -112,7 +112,7 @@ const (
 	TInteger                // int
 	TFloat                  // float64
 	TBoolean                // bool
-	TTime                   // time.Time
+	TDateTime               // time.Time
 	TComposite              // map[string]interface{}
 	TCollection             // []interface{}
 	THash                   // map[string]interface{}
@@ -143,8 +143,8 @@ var Float = basic(TFloat)
 // Boolean basic type
 var Boolean = basic(TBoolean)
 
-// Time basic type
-var Time = basic(TTime)
+// DateTime basic type
+var DateTime = basic(TDateTime)
 
 // Attributes map
 type Attributes map[string]Attribute
@@ -235,7 +235,7 @@ func (b basic) CanLoad(t reflect.Type, context string) error {
 			reflect.Int32, reflect.Uint32, reflect.Int64, reflect.Uint64, reflect.String:
 			return nil
 		}
-	case TTime:
+	case TDateTime:
 		switch t.Kind() {
 		case reflect.Struct, reflect.String: // time.Time Kind's is Struct
 			return nil
@@ -349,7 +349,7 @@ func (b basic) Load(value interface{}) (interface{}, error) {
 				extra = "integer value must be 0 or 1"
 			}
 		}
-	case TTime:
+	case TDateTime:
 		switch value.(type) {
 		case time.Time:
 			return value.(time.Time), nil
@@ -404,7 +404,7 @@ func (b basic) String() string {
 		return "Boolean"
 	case TFloat:
 		return "Float"
-	case TTime:
+	case TDateTime:
 		return "Time"
 	default:
 		return "??"
@@ -561,7 +561,7 @@ func (c Composite) Load(value interface{}) (interface{}, error) {
 					errors = append(errors, &IncompatibleValue{value, "Composite", msg})
 					continue
 				}
-			case TTime:
+			case TDateTime:
 				timeVal := val.(time.Time)
 				if att.MinValue != nil && timeVal.Before(att.MinValue.(time.Time)) {
 					msg := fmt.Sprintf("time value given for attribute %s does not match minimum value restriction (value \"%v\" is less than %v)",

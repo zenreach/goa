@@ -16,30 +16,28 @@ import (
 )
 
 func main() {
-	// Setup --routes flag
-	printRoutes := flag.Bool("routes", false, "Print routes")
-	flag.Parse()
-
 	// Setup application
-	app := goa.NewApplication("/api")
-	app.Mount(&v3.blogResource, &v3.blogController{})
-	app.Mount(&v3.postResource, &v3.postController{})
-	app.Mount(&v3.commentResource, &v3.commentController{})
+	app := goa.New("/api")
+	app.Mount(&v3.blogController{}, &v3.blogResource)
+	app.Mount(&v3.postController{}, &v3.postResource)
+	app.Mount(&v3.commentController{}, &v3.commentResource) 
 
-	// Print routes or run app
-	if *printRoutes {
-		app.PrintRoutes()
-	} else {
-		l := log.New(os.Stdout, "[hello] ", 0)
-		addr := "localhost:8080"
-		l.Printf("listening on %s", addr)
-		l.Printf("---------------------------------------------------------------------------------------------------------")
-		l.Printf("  index  with `curl http://%s/api/[blogs|posts|comments]`", addr)
-		l.Printf("  show   with `curl http://%s/api/[blogs|posts|comments]/1`", addr)
-		l.Printf("  update with `curl -X PUT -d '{\"Value\":\"foo\"}' -H Content-Type:application/json http://%s/api/[blogs|posts|comments]/1`", addr)
-		l.Printf("  delete with `curl -X DELETE http://%s/api/[blogs|posts|comments]/1`", addr)
-		l.Printf("---------------------------------------------------------------------------------------------------------")
+	// Print routes and run app
+	l := log.New(os.Stdout, "[blogger] ", 0)
+	addr := "localhost:8082"
+	l.Printf("listening on %s", addr)
+	l.Printf("routes:")
+	app.Routes().Log(l)
+	l.Printf("\n")
+	l.Printf("---------------------------------------------------------------------------------")
+	l.Printf("  index   `curl http://%s/api/blogs`", addr)
+	l.Printf("  show    `curl http://%s/api/blogs/1`", addr)
+	l.Printf("  create: `curl -X POST -d '{\"name\":\"My Blog\"}'\\\n" +
+                 "                   -H 'Content-Type:application/json' http://%s/api/blogs`", addr)
+	l.Printf("  update: `curl -X PUT -d '{\"name\":\"My Blog 2\"}'\\\n" +
+	         "                   -H 'Content-Type:application/json' http://%s/api/blogs/1`", addr)
+	l.Printf("  delete: `curl -X DELETE http://%s/api/blogs/1`", addr)
+	l.Printf("---------------------------------------------------------------------------------")
 
-		l.Fatal(http.ListenAndServe(addr, app)) // Application implements standard http.Handlefunc
-	}
+	l.Fatal(http.ListenAndServe(addr, app)) // Application implements standard http.Handlefunc
 }

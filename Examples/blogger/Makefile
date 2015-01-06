@@ -1,4 +1,4 @@
-.PHONY : run
+.PHONY : run clean
 
 run :
 	godep go run blogger.go

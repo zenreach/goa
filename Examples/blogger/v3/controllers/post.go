@@ -10,7 +10,7 @@ import (
 type postController struct{}
 
 /* list */
-func (c *postController) list(r goa.Request) {
+func (c *postController) list(r *goa.Request) {
 	if author, err := db.getAuthor(r.Params("authorId")); err != nil {
 		r.RespondEmpty("notFound")
 	}
