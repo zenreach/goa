@@ -37,7 +37,7 @@ var _ = Describe("Model", func() {
 					Required: true,
 				},
 				"published": Attribute{
-					Type:        Time,
+					Type:        DateTime,
 					Description: "Article publication date",
 					Required:    true,
 				},
