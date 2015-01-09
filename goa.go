@@ -38,6 +38,7 @@ type app struct {
 	router      *mux.Router
 	basePath    string
 	controllers map[string]*Controller
+	resources   map[string]*compiledResource
 	routeMap    *RouteMap
 	n           *negroni.Negroni
 }
@@ -61,6 +62,7 @@ func New(basePath string, handlers ...negroni.Handler) Application {
 		router:      router,
 		basePath:    basePath,
 		controllers: make(map[string]*Controller),
+		resources:   make(map[string]*compiledResource),
 		routeMap:    new(RouteMap),
 	}
 	n.Use(a.Handler())
@@ -89,6 +91,7 @@ func (app *app) Mount(controller Controller, resource *Resource) {
 	if _, err := url.Parse(compiled.fullPath); err != nil {
 		panic(fmt.Sprintf("goa: %v - invalid path specification '%s': %v", reflect.TypeOf(controller), compiled.fullPath, err))
 	}
+	app.resources[resource.Name] = compiled
 	app.routeMap.addRoutes(compiled, controller)
 	router := app.router
 	version := resource.ApiVersion

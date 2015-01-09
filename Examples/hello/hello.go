@@ -14,8 +14,8 @@
 package main
 
 import (
-	"./pkg"
 	"github.com/raphael/goa"
+	. "github.com/raphael/goa/Examples/hello/pkg"
 	"log"
 	"net/http"
 	"os"
@@ -24,24 +24,43 @@ import (
 func main() {
 	// Setup application
 	app := goa.New("/api")
-	app.Mount(&hello.Hello{}, &hello.HelloResource)
+	app.Mount(&Hello{}, &HelloResource)
 
-	// Print routes and run app
-	l := log.New(os.Stdout, "[hello] ", 0)
+	// Print docs, routes and run app
 	addr := "localhost:8081"
+	docs := goa.GenerateSwagger(app, info(), addr)
+	l := log.New(os.Stdout, "[hello] ", 0)
 	l.Printf("Listening on %s", addr)
+	l.Println("Docs:")
+	l.Println(docs)
 	l.Println("Routes:")
 	app.Routes().Log(l)
 	l.Printf("\n")
 	l.Printf("---------------------------------------------------------------------------------")
 	l.Printf("  index   `curl http://%s/api/hello`", addr)
 	l.Printf("  show    `curl http://%s/api/hello/1`", addr)
-	l.Printf("  create: `curl -X POST -d '{\"value\":\"foo\"}'\\\n" +
-                 "                   -H 'Content-Type:application/json' http://%s/api/hello`", addr)
-	l.Printf("  update: `curl -X PUT -d '{\"value\":\"foo\"}'\\\n" +
-	         "                   -H 'Content-Type:application/json' http://%s/api/hello/1`", addr)
+	l.Printf("  create: `curl -X POST -d '{\"value\":\"foo\"}'\\\n"+
+		"                   -H 'Content-Type:application/json' http://%s/api/hello`", addr)
+	l.Printf("  update: `curl -X PUT -d '{\"value\":\"foo\"}'\\\n"+
+		"                   -H 'Content-Type:application/json' http://%s/api/hello/1`", addr)
 	l.Printf("  delete: `curl -X DELETE http://%s/api/hello/1`", addr)
 	l.Printf("---------------------------------------------------------------------------------")
 
 	l.Fatal(http.ListenAndServe(addr, app)) // Application implements standard http.Handlefunc
+}
+
+// Information used to generate Swagger docs
+func info() *goa.SwaggerInfo {
+	return &goa.SwaggerInfo{
+		Title: "goa *hello* example",
+		Description: "Simple example that demonstrates basic CRUD" +
+			" operations on a REST resource",
+		Contact: &goa.SwaggerContact{
+			Name:  "Raphael Simon",
+			Url:   "https://github.com/raphael/goa",
+			Email: "simon.raphael@gmail.com",
+		},
+		License: &goa.SwaggerLicense{Name: "MIT"},
+		Version: "v1.0",
+	}
 }

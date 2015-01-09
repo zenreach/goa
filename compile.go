@@ -18,25 +18,27 @@ import (
 //   - Linking actions back to their parent resources for lookup.
 //   - Computing action paths.
 type compiledResource struct {
-	controller Controller
-	actions    map[string]*compiledAction
-	apiVersion string
-	fullPath   string
-	name       string
+	controller  Controller
+	actions     map[string]*compiledAction
+	apiVersion  string
+	fullPath    string
+	name        string
+	description string
 }
 
 // A compiled action uses pointers to refer to its fields and has an associated
 // full path and resource.
 type compiledAction struct {
-	name      string
-	multipart int
-	views     []string
-	params    Params
-	filters   Filters
-	payload   *Model              // non-nil if action accepts a payload
-	resource  *compiledResource   // Parent resource definition
-	routes    []*compiledRoute    // Base URI to action including app base path and resource route prefix
-	responses []*compiledResponse // Action responses
+	name        string
+	description string
+	multipart   int
+	views       []string
+	params      Params
+	filters     Filters
+	payload     *Model              // non-nil if action accepts a payload
+	resource    *compiledResource   // Parent resource definition
+	routes      []*compiledRoute    // Base URI to action including app base path and resource route prefix
+	responses   []*compiledResponse // Action responses
 }
 
 // A compiled response embeds the response name, a link back to the original
@@ -74,10 +76,11 @@ func compileResource(resource *Resource, controller Controller, appPath string) 
 		resourcePath = path.Join(resourcePath, resource.RoutePrefix)
 	}
 	compiled := &compiledResource{
-		controller: controller,
-		apiVersion: resource.ApiVersion,
-		fullPath:   resourcePath,
-		name:       resource.Name,
+		controller:  controller,
+		apiVersion:  resource.ApiVersion,
+		fullPath:    resourcePath,
+		name:        resource.Name,
+		description: resource.Description,
 	}
 	compiled.actions = make(map[string]*compiledAction, len(resource.Actions))
 	for an, action := range resource.Actions {
@@ -129,15 +132,16 @@ func compileResource(resource *Resource, controller Controller, appPath string) 
 			cRoutes[i] = &compiledRoute{r[0], actionPath, positions}
 		}
 		compiled.actions[an] = &compiledAction{
-			name:      an,
-			multipart: action.Multipart,
-			views:     action.Views,
-			params:    action.Params,
-			filters:   action.Filters,
-			payload:   payload,
-			resource:  compiled,
-			routes:    cRoutes,
-			responses: responses,
+			name:        an,
+			description: action.Description,
+			multipart:   action.Multipart,
+			views:       action.Views,
+			params:      action.Params,
+			filters:     action.Filters,
+			payload:     payload,
+			resource:    compiled,
+			routes:      cRoutes,
+			responses:   responses,
 		}
 	}
 

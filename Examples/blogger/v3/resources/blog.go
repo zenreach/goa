@@ -34,10 +34,10 @@ var blogResource = Resource{
 				},
 				"maxPosts": Attribute{
 					Description: "Maximum number of posts to retrieve along with the blog." +
-					             " When this parameter is not specified, no posts will be" +
-					             " returned as part of the blog resource.",
-					Type:        Integer,
-					MinValue:    1,
+						" When this parameter is not specified, no posts will be" +
+						" returned as part of the blog resource.",
+					Type:     Integer,
+					MinValue: 1,
 				},
 			},
 
@@ -65,9 +65,8 @@ var blogResource = Resource{
 			},
 
 			Responses: Responses{
-				"ok":         blogResponse,
+				"ok": blogResponse,
 			},
 		},
 	},
 }
-
