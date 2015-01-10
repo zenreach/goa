@@ -20,23 +20,23 @@ type Task struct {
 // Use "tiny" view to render items
 // Identifier: "application/vnd.example.task;type=collection"
 type TaskCollection struct {
-  goa.MediaType
-  
-  // Total number of tasks
-  Count uint
-  
-  // Tasks
-  Items []Task `goa:"Use:tiny"`
+	goa.MediaType
+
+	// Total number of tasks
+	Count uint
+
+	// Tasks
+	Items []Task `goa:"Use:tiny"`
 }
 
 // Not found media type
 // Identifier: "application/vnd.goa.example.todo.errors.notfound"
 type ResourceNotFound struct {
 	goa.MediaType
-	
+
 	// Id of resource not found
 	Id uint `goa:"MinValue:1"`
-	
+
 	// Type of resource not found
 	Resource string `goa:"MinLength:1"`
 }
@@ -47,7 +47,7 @@ type TaskDetails struct {
 	Details string `goa:"Required:true,MinLength:1"`
 }
 
-// Actions  
+// Actions
 type TaskActions interface {
 
 	// List all task strings
@@ -59,7 +59,7 @@ type TaskActions interface {
 	// GET "/:id"
 	// 200: Task
 	// 404: ResourceNotFound
-	Show(id uint) *Task, *ResourceNotFound
+	Show(id uint) (*Task, *ResourceNotFound)
 
 	// Create new task string
 	// POST ""

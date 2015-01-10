@@ -10,9 +10,9 @@ var models = map[int]Task{
 	5: Task{5, "こんにちは世界！"},
 }
 
-// Load all tasks
-func LoadAll() []Task
-	tasks := make([]Task, len(tasks))
+// Load all models
+func LoadAll() []Task {
+	tasks := make([]Task, len(models))
 	i := 0
 	for _, model := range models {
 		tasks[i] = model
@@ -35,14 +35,14 @@ func Create(details string) uint {
 	// Dumb and inefficient - do better in real life
 	newId := 1
 	for ok := false; !ok; newId += 1 {
-		for id, _ := range tasks {
+		for id, _ := range models {
 			ok = id != newId
 			if !ok {
 				break
 			}
 		}
 	}
-	tasks[newId] = Task{newId, details}
+	models[newId] = Task{newId, details}
 	return newId
 }
 
@@ -60,7 +60,7 @@ func Delete(id uint) uint {
 	if t, ok := models[id]; ok {
 		models[id] = Task{id, details}
 		models[i] = models[len(models)-1]
-		models = models[0 : len(tasks)-1]
+		models = models[0 : len(models)-1]
 		return id
 	}
 	return 0

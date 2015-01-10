@@ -11,7 +11,7 @@ func (t *Task) Index() *TaskCollection {
 }
 
 // Show
-func (t *Task) Show(id uint) *Task, *ResourceNotFound {
+func (t *Task) Show(id uint) (*Task, *ResourceNotFound) {
 	m := db.Load(id)
 	if m == nil {
 		t.Respond(404)
