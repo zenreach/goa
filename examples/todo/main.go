@@ -25,7 +25,7 @@ import (
 func main() {
 	// Setup
 	app := goa.New("/api")
-	app.Mount("/tasks", new(Task))
+	app.Mount("/tasks", new(TaskController))
 
 	// Run
 	addr := "localhost:8081"
