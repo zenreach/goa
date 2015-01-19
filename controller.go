@@ -1,11 +1,8 @@
 package goa
 
-import (
-	"net/http"
-)
+import ()
 
 type Controller struct {
-	Respond(code int) *Response
 }
 
 func (c *Controller) Respond(code int) *Response {

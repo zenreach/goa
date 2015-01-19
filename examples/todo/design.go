@@ -13,7 +13,7 @@ type Task struct {
 
 	// Task content
 	Details string `goa:"MinLength:1"`
-	
+
 	// Creation timestamp
 	CreatedAt *time.Time `goa:"Views:default,tiny"`
 }
@@ -26,7 +26,7 @@ type TaskCollection struct {
 	Count uint `goa:"Views:default,extended"`
 
 	// Tasks
-	Items []Task `goa:"Views:default:tiny,extended:default"`
+	Items []*Task `goa:"Views:default:tiny,extended:default"`
 }
 
 // Not found media type
@@ -56,7 +56,7 @@ type TaskResource interface {
 	//@goa 200: TaskCollection
 	Index(since *time.Time) *TaskCollection
 
-	// Get task string with given id
+	// Get task string wi	th given id
 	//@goa GET "/:id"
 	//@goa 200: Task
 	//@goa 404: ResourceNotFound

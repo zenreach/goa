@@ -2,12 +2,9 @@ package goa
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/olekukonko/tablewriter"
 	"io"
 	"log"
-	"reflect"
-	"sort"
 	"strings"
 )
 
@@ -56,32 +53,6 @@ func (m *RouteMap) WriteRoutes(writer io.Writer) {
 // Factory method
 func newRouteMap(base string) *RouteMap {
 	return &RouteMap{BasePath: base}
-}
-
-// addRoutes records routes for given resource definition
-func (m *RouteMap) addRoutes(r *Resource, c *Controller) {
-	for _, a := range r.actions {
-		m.addRoute(r, a, c)
-	}
-	sort.Sort(byAction(*m))
-}
-
-// addRoute records a single route
-func (m *RouteMap) addRoute(r *Resource, a *Action, c *Controller) {
-	for _, route := range action.routes {
-		version := resource.ApiVersion
-		if len(version) == 0 {
-			version = "-"
-		}
-		r := RouteData{
-			Version:    version,
-			Verb:       route.Verb,
-			Path:       route.Path,
-			Action:     action.Name,
-			Controller: fmt.Sprintf("%v", reflect.TypeOf(controller).Elem()),
-		}
-		m.Routes = append(m.Routes, &r)
-	}
 }
 
 // Sorted map by action

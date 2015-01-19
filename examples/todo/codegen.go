@@ -8,22 +8,22 @@ import (
 	"github.com/gorilla/mux"
 )
 
-/****************/
-/* Task handler */
-/****************/
+/*******************/
+/* Task controller */
+/******************/
 
-type TaskHandler struct {
+type TaskController struct {
 	w http.ResponseWriter
 	r *http.Request
 }
 
 // Implements TaskResource
 //
-// func (c *TaskHandler) Index(since *time.Time) *TaskCollection { }
-// func (c *TaskHandler) Show(id uint) (*Task, *ResourceNotFound) { }
-// func (c *TaskHandler) Create(p *TaskDetails) { }
-// func (c *TaskHandler) Update(body *TaskDetails, id uint) { }
-// func (c *TaskHandler) Delete(id uint) *ResourceNotFound { }
+// func (c *TaskController) Index(since *time.Time) *TaskCollection { }
+// func (c *TaskController) Show(id uint) (*Task, *ResourceNotFound) { }
+// func (c *TaskController) Create(p *TaskDetails) { }
+// func (c *TaskController) Update(body *TaskDetails, id uint) { }
+// func (c *TaskController) Delete(id uint) *ResourceNotFound { }
 
 // Interface implemented by object to be rendered into Task media type
 type TaskData interface {
@@ -78,21 +78,21 @@ func registerHandlers(app *app) {
 }
 	
 func taskResourceIndex(w http.ResponseWriter, r *http.Request) {
+		c := &TaskController{w: w, r: r}
 		if err := goa.CheckVersion(r, "1.0") {
-			h.RespondBadRequest("Bad or missing API version. Specify with \"?api_version=1.0\" param or \"X-API-VERSION=1.0\" header.")
+			c.RespondBadRequest("Bad or missing API version. Specify with \"?api_version=1.0\" param or \"X-API-VERSION=1.0\" header.")
 			return
 		}
-		h := &TaskHandler{w: w, r: r}
 		v := mux.Vars(r)
-		s, _ := v["since"]
+		s, ok := v["since"]
 		var since *time.Time
-		if len(s) > 0 {
+		if ok {
 			if since, err = goa.LoadDateTime(s); err != nil {
-				h.RespondBadRequest("Failed to load param 'since': " + err.Error())
+				c.RespondBadRequest("Failed to load param 'since': " + err.Error())
 				return
 			}
 		}
-		res = h.Index(since)
-		h.sendResponse(res, v["view"])
+		res = c.Index(since)
+		c.sendResponse(res, v["view"])
 	}
 }

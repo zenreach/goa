@@ -34,11 +34,11 @@ type Application interface {
 // Internal struct holding application data
 // Implements the Application interface
 type app struct {
-	router      *mux.Router
-	basePath    string
-	resources   []Resource
-	routeMap    *RouteMap
-	n           *negroni.Negroni
+	router    *mux.Router
+	basePath  string
+	resources []Resource
+	routeMap  *RouteMap
+	n         *negroni.Negroni
 }
 
 // New creates a new goa application given a base path and an optional set of
@@ -71,8 +71,8 @@ func New(basePath string, handlers ...negroni.Handler) Application {
 // This method panics on error (e.g. if the controller path is already in use)
 // to make sure that the app won't even start in case of a blatant error.
 func (app *app) Mount(path string, controller *Controller) {
-	if resource == nil {
-		panic(fmt.Sprintf("goa: API resource mounted under \"%s\" cannot be null", path))
+	if controller == nil {
+		panic(fmt.Sprintf("goa: API controller mounted under \"%s\" cannot be null", path))
 	}
 	err, res := compileResource(controller)
 	if err != nil {
