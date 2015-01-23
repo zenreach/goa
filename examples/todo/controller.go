@@ -9,8 +9,15 @@ type TaskController struct {
 }
 
 // Index
-func (c *TaskController) Index() *TaskCollection {
-	models := db.LoadAll()
+func (c *TaskController) Index(s string) (*TaskCollection, *InvalidSince) {
+	since * time.Time
+	if len(since) > 0 {
+		*since, err = time.Parse(time.RFC3389, since)
+		if err != nil {
+			return nil, &InvalidSince{s, err.Error()}
+		}
+	}
+	models := db.LoadAll(since)
 	tasks := make([]Task, len(models))
 	for i, m := range models {
 		task, _ := RenderTask(&m)

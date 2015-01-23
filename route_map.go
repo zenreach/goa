@@ -26,7 +26,9 @@ type RouteData struct {
 }
 
 // AddRoute
-func (m *RouteMap) AddRoute(
+func (m *RouteMap) AddRoute(r *RouteData) {
+	m.Routes = append(m.Routes, r)
+}
 
 // PrintRoutes returns a formatted string that represent the routes for human
 // consumption.

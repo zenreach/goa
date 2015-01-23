@@ -118,6 +118,7 @@ func analyze(packages map[string]*ast.Package) {
 	}
 }
 
+// TBD: Check that action parameters use JSON compatible types (numbers, bool or string)
 func parseResource(spec *ast.TypeSpec) (*resource, error) {
 	for d := range spec.Doc.List {
 		comment := *d

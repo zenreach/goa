@@ -1,5 +1,9 @@
 package goa
 
+import (
+	"github.com/xeipuuv/gojsonschema"
+)
+
 // Resource definitions describe REST resources exposed by the application API.
 // They can be versioned so that multiple versions can be exposed (usually for
 // backwards compatibility). Clients specify the version they want to use
@@ -18,13 +22,13 @@ package goa
 // typically the "index" and "show" actions re-use the resource media type.
 // Action definitions list all the actions supported by the resource (both CRUD
 // and other actions), see the Action struct.
-type Resource struct {
+type ResourceDefinition struct {
 	Name        string
 	Description string
 	ApiVersion  string
 	RoutePrefix string
 	MediaType   MediaType
-	Actions     map[string]Action
+	Actions     map[string]ActionDefinition
 }
 
 // Media types are used to define the content of controller action responses.
@@ -49,11 +53,14 @@ type Resource struct {
 // redefine any of the attribute field, they get "inherited" from the media type
 // attribute.
 type MediaType struct {
-	Identifier  string     // HTTP media type identifier (http://en.wikipedia.org/wiki/Internet_media_type)
-	Description string     // Description used for documentation
-	Schema      JsonSchema // Actual media type definition
-	Views       Views      // Media type views
+	Identifier  string               // HTTP media type identifier (http://en.wikipedia.org/wiki/Internet_media_type)
+	Description string               // Description used for documentation
+	Schema      *gojsonschema.Schema // Actual media type definition
+	Views       *Views               // Media type views
 }
+
+// Collection of named Views
+type Views map[string]View
 
 // Views have a description and a list of property names
 type View struct {
@@ -61,11 +68,8 @@ type View struct {
 	Properties  []string // Name of properties to include in view
 }
 
-// Collection of named Views
-type Views map[string]View
-
-// Actions describe operation that can be run on resources. They define a route
-// which consists of one ore more pairs of HTTP verb and path.
+// Action definitions describe operation that can be run on resources. They
+// define a route which consists of one ore more pairs of HTTP verb and path.
 // They also optionally define the action parameters
 // (variables defined in the route path) and payload (request body content).
 // Parameters and payload are described using attributes which may include
@@ -90,20 +94,31 @@ type Views map[string]View
 // Finally, action definitions describe the set of potential responses they may
 // return and for each response the status code, compulsory headers and a media
 // type (if different from the resource media type).
-type Action struct {
+type ActionDefinition struct {
 	Name        string
 	Description string
-	Route       Route
-	Params      []NamedSchemas
-	Payload     *JsonSchema
+	Routes      []Route
+	Params      map[string]gojsonschema.JsonSchema
+	Payload     *gojsonschema.JsonSchema
 	Views       []string
-	Responses   Responses
+	Responses   map[int]ResponseDefinition
 	Multipart   int
 }
 
-// Interface implemented by action route
-type Route interface {
-	GetRawRoutes() [][]string // Retrieve pair of HTTP verb and action path
+// A route consist of an HTTP method and path
+type Route struct {
+	Method string // One of "GET", "POST", etc.
+	Path   string
+}
+
+// Response definitions dictate the set of valid responses a given action may
+// return. A response definition describes the response status code, media type
+// and compulsory headers.
+type ResponseDefinition struct {
+	Description string     // Description used by documentation
+	Status      int        // Response status code
+	MediaType   *MediaType // Response media type if any
+	Headers     Headers    // Response header validations, enclose values in '/' for regexp behavior
 }
 
 // Possible values for the Action struct "Multipart" field
@@ -111,53 +126,3 @@ const (
 	SupportsMultipart = iota // Action request body may use multipart content type
 	RequiresMultipart        // Action request body must use multipart content type
 )
-
-// Map of action definitions keyed by action name
-type Actions map[string]Action
-
-// Map of response definitions keyed by response name
-type Responses map[string]Response
-
-// HTTP verbs enum type
-type httpVerb string
-
-//  Route struct
-type singleRoute struct {
-	Verb httpVerb // Route HTTP verb
-	Path string   // Route path
-}
-
-// HTTP Verbs enum
-const (
-	options httpVerb = "OPTIONS"
-	get     httpVerb = "GET"
-	head    httpVerb = "HEAD"
-	post    httpVerb = "POST"
-	put     httpVerb = "PUT"
-	delete_ httpVerb = "DELETE"
-	trace   httpVerb = "TRACE"
-	connect httpVerb = "CONNECT"
-	patch   httpVerb = "PATCH"
-)
-
-// A multi-route is an array of routes
-type multiRoute []singleRoute
-
-// Multi creates a multi-route from the given list of routes
-func Multi(routes ...singleRoute) multiRoute {
-	return multiRoute(routes)
-}
-
-// GetRawRoutes returns the pair of HTTP verb and path for the route
-func (r singleRoute) GetRawRoutes() [][]string {
-	return [][]string{{string(r.Verb), r.Path}}
-}
-
-// GetRawRoutes returns the list of pairs of HTTP verb and path for the multi-route
-func (m multiRoute) GetRawRoutes() [][]string {
-	routes := make([][]string, len(m))
-	for _, r := range m {
-		routes = append(routes, []string{string(r.Verb), r.Path})
-	}
-	return routes
-}

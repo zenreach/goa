@@ -2,13 +2,14 @@ package goa
 
 import (
 	"fmt"
-	"github.com/codegangsta/negroni"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/codegangsta/negroni"
+	"github.com/gorilla/mux"
 )
 
 // Public interface of a goa application.
@@ -18,7 +19,7 @@ import (
 // run directly using the `ServeHTTP()` method or as a Negroni middleware using
 // the `AsMiddleware()` method (see https://github.com/codegangsta/negroni).
 // All routes mounted on an application can be retrieved using the `Routes()`
-// method and the `Swagger()` method generates its Swagger representation.
+// method and the `WriteRaml()` method generates its RAML representation.
 type Application interface {
 	// Add handler to application
 	MountHandler(method, path string, handler http.HandlerFunc)
@@ -28,8 +29,8 @@ type Application interface {
 	AsMiddleware() negroni.Handler
 	// Routes returns the application route map
 	Routes() *RouteMap
-	// Generate Swagger representation for the API (http://swagger.io)
-	Swagger(io.Writer)
+	// Generate RAML representation for the API (http://raml.org)
+	WriteRaml(io.Writer)
 }
 
 // New creates a new goa application given a base path and an optional set of
@@ -66,18 +67,7 @@ func (app *app) MountHandler(verb, path string, handler http.HandlerFunc) {
 	matcher := app.router.Methods(verb)
 	elems := strings.SplitN(path, "?", 2)
 	actionPath := elems[0]
-	queryString := ""
-	if len(elems) > 1 {
-		queryString = elems[1]
-	}
 	matcher = matcher.Path(actionPath)
-	if len(queryString) > 0 {
-		query := strings.Split(queryString, "&")
-		for _, q := range query {
-			pair := strings.SplitN(q, "=", 2)
-			matcher = matcher.Queries(pair[0], pair[1])
-		}
-	}
 	matcher.HandlerFunc(handler)
 }
 
@@ -96,9 +86,9 @@ func (app *app) Routes() *RouteMap {
 	return app.routeMap
 }
 
-// Swagger returns the Swagger representation of the API
-// see http://swagger.io
-func (app *app) Swagger() string {
+// WriteRaml returns the RAML representation of the API
+// see http://raml.org
+func (app *app) WriteRaml() string {
 	return ""
 }
 

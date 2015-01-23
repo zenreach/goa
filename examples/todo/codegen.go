@@ -12,43 +12,66 @@ import (
 )
 
 func goa_MountAllHandlers(app goa.Application) {
-	app.MountHandler(goa.GET, "?since={since}&view={view}", goa_TaskIndex)
-	app.MountHandler(goa.GET, "/{id:[0-9]+}?view={view}", goa_TaskShow)
-	app.MountHandler(goa.POST, "", goa_TaskCreate)
-	app.MountHandler(goa.PUT, "/{id:[0-9]+}", goa_TaskUpdate)
-	app.MountHandler(goa.DELETE, "/{id:[0-9]+}", goa_TaskDelete)
+	t := new(goa_TaskResource)
+	app.MountHandler("GET", "?since={since}&view={view}", t.Index)
+	app.MountHandler("GET", "/{id:[0-9]+}?view={view}", t.Show)
+	app.MountHandler("POST", "", t.Create)
+	app.MountHandler("PUT", "/{id:[0-9]+}", t.Update)
+	app.MountHandler("DELETE", "/{id:[0-9]+}", t.Delete)
 }
 
-func goa_TaskResourceIndex(w http.ResponseWriter, r *http.Request) {
+//== TaskResource handlers ==
+
+type goa_TaskResource ResourceDefinition
+
+// GET /todo/tasks?[since={since}]&[view={view}]
+func (t *goa_TaskResource) Index(w http.ResponseWriter, r *http.Request) {
 	c := &TaskController{w: w, r: r}
 	if err := goa.CheckVersion(r, "1.0"); err != nil {
-		c.RespondBadRequest("Bad or missing API version. Specify with \"?api_version=1.0\" param or \"X-API-VERSION=1.0\" header.")
 		return
 	}
-	v := mux.Vars(r)
-	s, ok := v["since"]
-	var since *time.Time
+	index := t.actions["Index"]
+	params, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		c.RespondBadRequest("goa: " + err.Error())
+		return
+	}
+
+	// Coerce and validate "since" parameter
+	var cp0 *time.Time
+	p0, ok := params["since"]
 	if ok {
-		if since, err = goa.LoadDateTime(s); err != nil {
-			c.RespondBadRequest("Failed to load param 'since': " + err.Error())
+		err := goa.ValidateParameter(p0, "since", &index)
+		if err != nil {
+			c.RespondBadRequest("goa: " + err.Error())
+			return
+		}
+		cp0, err = goa.CoerceParameter(p0, "since", &index)
+		if err != nil {
+			c.RespondBadRequest("goa: " + err.Error())
 			return
 		}
 	}
-	res := c.Index(since)
-	if c.Status == 200 {
-		if err := goa_ValidateTaskCollection(res); err != nil {
-			c.RespondInvalidResponse(res, err)
-			return
-		}
-		view, ok := v["view"]
-		if !ok {
-			view := "default"
-		}
-		data := goa_RenderTaskCollection(res, view)
-		c.Send(data)
-	} else {
-		c.RespondInvalidResponseStatus(c.Status)
+
+	// Call controller Index method
+	res := c.Index(cp0)
+
+	// Validate response
+	err = validateResponse(res, index)
+	if err != nil {
+		c.RespondInternalError("goa: " + err.Error())
+		return
 	}
+
+	// Render media type
+	view, ok := params["view"]
+	if !ok {
+		view := "default"
+	}
+	data := goa_RenderTaskCollection(res, view)
+
+	// Send response
+	c.Send(data)
 }
 
 func goa_TaskResourceShow(w http.ResponseWriter, r *http.Request) {

@@ -1,33 +1,39 @@
 package main
 
+import "time"
+
 // Emulate DB access
 type Db map[uint]TaskModel
 
 // Task model
 type TaskModel struct {
-	id      uint
-	details string
+	id        uint
+	details   string
+	createdAt time.Time
 }
 
 // Implements TaskData
-func (t *TaskModel) Id() uint        { return t.id }
-func (t *TaskModel) Details() string { return t.details }
+func (t *TaskModel) Id() uint             { return t.id }
+func (t *TaskModel) Details() string      { return t.details }
+func (t *TaskModel) CreatedAt() time.Time { return t.createdAt }
 
 // Hard coded pre-existing list of task strings
 var db = Db{
-	1: TaskModel{id: 1, details: "Hello world!"},
-	2: TaskModel{id: 2, details: "Привет мир!"},
-	3: TaskModel{id: 3, details: "Hola mundo!"},
-	4: TaskModel{id: 4, details: "你好世界!"},
-	5: TaskModel{id: 5, details: "こんにちは世界！"},
+	1: TaskModel{id: 1, details: "Hello world!", createdAt: time.Now()},
+	2: TaskModel{id: 2, details: "Привет мир!", createdAt: time.Now()},
+	3: TaskModel{id: 3, details: "Hola mundo!", createdAt: time.Now()},
+	4: TaskModel{id: 4, details: "你好世界!", createdAt: time.Now()},
+	5: TaskModel{id: 5, details: "こんにちは世界！", createdAt: time.Now()},
 }
 
 // Load all tasks
-func (d *Db) LoadAll() []TaskModel {
+func (d *Db) LoadAll(since *time.Time) []TaskModel {
 	tasks := make([]TaskModel, len(db))
 	i := 0
 	for _, model := range db {
-		tasks[i] = model
+		if since == nil || model.CreatedAt.After(*since) {
+			tasks[i] = model
+		}
 		i += 1
 	}
 	return tasks

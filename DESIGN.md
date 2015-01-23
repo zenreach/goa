@@ -4,7 +4,7 @@ goa.RegisterControllers
 goa.ServeHTTP
 
 goa.MountHandler
-goa.Swagger
+goa.WriteRaml
 
 Generated
 ---------

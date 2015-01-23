@@ -39,6 +39,16 @@ type ResourceNotFound struct {
 	Resource string `goa:"MinLength:1"`
 }
 
+// Invalid "since" media type
+//@goa MediaType: "application/vnd.goa.example.todo.errors.invalidsince"
+type InvalidSince struct {
+	// Original since value
+	Since string
+
+	// Validation error details
+	Error string
+}
+
 // Task details, used to define create request body
 //@goa Payload
 type TaskDetails struct {
@@ -53,12 +63,13 @@ type TaskDetails struct {
 type TaskResource interface {
 	// List all tasks optionally filtering only the ones created since
 	// given date if any.
-	//@goa GET "?since={since}"
+	//@goa GET "?[since={since}]"
 	//@goa 200: TaskCollection
-	Index(since *time.Time) *TaskCollection
+	//@goa 400: InvalidSince
+	Index(since string) (*TaskCollection, *InvalidSince)
 
 	// Get task string with given id
-	//@goa GET "/:id"
+	//@goa GET "/{id}"
 	//@goa 200: Task
 	//@goa 404: ResourceNotFound
 	Show(id uint) (*Task, *ResourceNotFound)
@@ -71,13 +82,13 @@ type TaskResource interface {
 	Create(body *TaskDetails)
 
 	// Update existing task string text
-	//@goa PUT "/:id"
+	//@goa PUT "/{id}"
 	//@goa 204:
 	//@goa 404: ResourceNotFound
 	Update(body *TaskDetails, id uint) *ResourceNotFound
 
 	// Delete task string
-	//@goa DELETE "/:id"
+	//@goa DELETE "/{id}"
 	//@goa 204:
 	//@goa 404: ResourceNotFound
 	Delete(id uint) *ResourceNotFound
