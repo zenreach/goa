@@ -40,34 +40,38 @@ func main() {
 	// base += size
 	// return nil
 	// })
-	
+
 	// 1. Parse code
 	packages, err := parser.ParseDir(nil, path, filter(exclude, include),
 		parser.ParseComments)
 	if err != nil {
 		fail(err.Error())
 	}
-	
+
 	// 2. Analyze AST
 	api, errs := analyze(packages)
 	if len(errs) > 0 {
 		fail(errs.Error())
 	}
-	
+	err = api.validate()
+	if err != nil {
+		fail(err.Error())
+	}
+
 	// 3. Generate code
 	dest := filepath.Join(path, "codegen.go")
 	w, err := os.Create(dest)
 	if err != nil {
 		fail(fmt.Sprintf("Could not open %s (%s)", dest, err.Error()))
 	}
-	errs = api.generate(w)
+	errs = generateApi(api, w)
 	if len(errs) > 0 {
 		fail(errs.Error())
 	}
-	
+
 	// We're done!
 	fmt.Println(dest)
-} 
+}
 
 // Helper function used to filter source files to be parsed according to the
 // 'ex' and 'in' flags.

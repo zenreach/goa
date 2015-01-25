@@ -16,7 +16,7 @@ func goa_MountAllHandlers(app goa.Application) {
 	goa_MountTaskHandlers(app)
 }
 
-//== TaskResource handlers ==
+//== TaskResource ==
 
 type goa_TaskResource ResourceDefinition
 

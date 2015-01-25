@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"sort"
 )
 
 // Generated service description
@@ -21,6 +19,17 @@ func newApiDescription() *apiDescription {
 		controllers: map[string]*controllerDef{},
 		mediaTypes:  map[string]*mediaTypeDef{},
 	}
+}
+
+// Find controller associated with given resource
+func (a *apiDescription) resourceCompiler(resource *resourceDef) (*controllerDef, error) {
+	name := resource.name
+	for _, c := range a.controllers {
+		if c.resource == name {
+			return c, nil
+		}
+	}
+	return nil, fmt.Errorf("No controller implement resource %s", name)
 }
 
 // Add resource to description
@@ -56,7 +65,7 @@ func (a *apiDescription) validate() error {
 		mt := resource.mediaType
 		_, ok := a.mediaTypes[mt]
 		if !ok {
-			return fmt.Errorf("Missing media type definition "+
+			return fmt.Errorf("Missing media type "+
 				"%s used by resource %s", mt, name)
 		}
 		for n, action := range resource.actions {
@@ -64,7 +73,7 @@ func (a *apiDescription) validate() error {
 				if len(response.mediaType) > 0 {
 					_, ok := a.mediaTypes[response.mediaType]
 					if !ok {
-						return fmt.Errorf("Missing media type definition "+
+						return fmt.Errorf("Missing media type "+
 							"%s used by action %s of resource %s", mt, n, name)
 					}
 				}
@@ -81,30 +90,4 @@ func (a *apiDescription) validate() error {
 		}
 	}
 	return nil
-}
-
-// Generate API code
-func (a *apiDescription) generate(w io.Writer) errors {
-	names := make([]string, len(a.resources))
-	idx := 0
-	for name, _ := range a.resources {
-		names[idx] = name
-		idx += 1
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		resource, _ := a.resources[name]
-		resource.generate(w)
-		for _, action := range resource.actions {
-			for _, resp := range action.responses {
-				if len(resp.mediaType) > 0 {
-					mt, _ := a.mediaTypes[resp.mediaType]
-					mt.generate(w)
-				}
-			}
-		}
-		//	controller, ok := a.controllers[name]
-
-	}
-	return errors{}
 }

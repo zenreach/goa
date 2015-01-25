@@ -2,14 +2,7 @@ package main
 
 import (
 	"go/ast"
-	"io"
 )
-
-// A parsed goa controller, resource or media type definition
-type definition interface {
-	// Generate code for definition
-	generate(io.Writer) error
-}
 
 // Mediatype definition: defines identifier
 type mediaTypeDef struct {
@@ -23,18 +16,23 @@ type resourceDef struct {
 	name       string
 	apiVersion string
 	mediaType  string
-	actions    map[string]*ActionDef
+	basePath   string
+	actions    map[string]*actionDef
 	spec       *ast.TypeSpec
 }
 
 // Resource action directives: route and responses
-type ActionDef struct {
-	route     string
-	responses map[int]*ResponseDef
+type actionDef struct {
+	name      string
+	method    string
+	path      string
+	responses map[int]*responseDef
+	field     *ast.Field
 }
 
 // Response directives: body and headers
-type ResponseDef struct {
+type responseDef struct {
+	code      int
 	mediaType string
 	headers   map[string]string
 }
@@ -43,16 +41,4 @@ type ResponseDef struct {
 type controllerDef struct {
 	resource string
 	spec     *ast.TypeSpec
-}
-
-func (m *mediaTypeDef) generate(output io.Writer) errors {
-	return nil
-}
-
-func (m *resourceDef) generate(output io.Writer) errors {
-	return nil
-}
-
-func (m *controllerDef) generate(output io.Writer) errors {
-	return nil
 }

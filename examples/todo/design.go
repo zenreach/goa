@@ -104,15 +104,15 @@ type TaskResource interface {
 	// given date if any.
 	//
 	//@goa GET "?[since={since}]"
-	//@goa 200: TaskCollection
-	//@goa 400: InvalidSince
+	//@goa 200: "application/vnd.example.todo.task;type=collection"
+	//@goa 400: "application/vnd.goa.example.todo.errors.invalidsince"
 	Index(since string) (*TaskCollection, *InvalidSince)
 
 	// Get task string with given id
 	//
 	//@goa GET "/{id}"
-	//@goa 200: Task
-	//@goa 404: ResourceNotFound
+	//@goa 200: "application/vnd.example.todo.task"
+	//@goa 404: "application/vnd.goa.example.todo.errors.notfound"
 	Show(id uint) (*Task, *ResourceNotFound)
 
 	// Create new task string
@@ -127,13 +127,13 @@ type TaskResource interface {
 	//
 	//@goa PUT "/{id}"
 	//@goa 204:
-	//@goa 404: ResourceNotFound
+	//@goa 404: "application/vnd.goa.example.todo.errors.notfound"
 	Update(body *TaskDetails, id uint) *ResourceNotFound
 
 	// Delete task string
 	//
 	//@goa DELETE "/{id}"
 	//@goa 204:
-	//@goa 404: ResourceNotFound
+	//@goa 404: "application/vnd.goa.example.todo.errors.notfound"
 	Delete(id uint) *ResourceNotFound
 }
