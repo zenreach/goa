@@ -11,18 +11,86 @@ import (
 	"github.com/raphael/goa"
 )
 
+// Entry point - call this in your main
 func goa_MountAllHandlers(app goa.Application) {
-	t := new(goa_TaskResource)
-	app.MountHandler("GET", "?since={since}&view={view}", t.Index)
-	app.MountHandler("GET", "/{id:[0-9]+}?view={view}", t.Show)
-	app.MountHandler("POST", "", t.Create)
-	app.MountHandler("PUT", "/{id:[0-9]+}", t.Update)
-	app.MountHandler("DELETE", "/{id:[0-9]+}", t.Delete)
+	goa_MountTaskHandlers(app)
 }
 
 //== TaskResource handlers ==
 
 type goa_TaskResource ResourceDefinition
+
+var goa_TaskSchema = goa.Hash{
+	"title": "Task media type",
+	"type":  "object",
+	"properties": goa.Hash{
+		"Id": goa.Hash{
+			"description": "Task identifier",
+			"type":        "integer",
+			"minimum":     1,
+		},
+		"User": goa.Hash{
+			"description": "User email",
+			"type":        "string",
+			"pattern":     "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+		},
+		"Details": goa.Hash{
+			"type":      "string",
+			"minLength": 1,
+		},
+		"Kind": goa.Hash{
+			"description": "Task kind",
+			"type":        "string",
+			"enum":        []string{"todo", "reminder"},
+		},
+		"ExpiresAt": goa.Hash{
+			"description": "Todo expiration or reminder alarm timestamp",
+			"type":        "string",
+			"format":      "time.RFC3339",
+		},
+		"CreatedAt": goa.Hash{
+			"description": "Creation timestamp",
+			"type":        "string",
+			"format":      "time.RFC3339",
+		},
+	},
+}
+
+func goa_MountTaskHandlers(app goa.Application) {
+	l := gojsonschema.NewGoLoader(goa_TaskSchema)
+	s, _ := gojsonschema.NewSchema(l)
+	m := goa.MediaType{
+		Identifier: "application/vnd.example.todo.task",
+		Description: `Task media type
+A task has a unique id, a kind which can be either 'todo' or 'reminder' and
+details. A task also has a creation timestamp and an expiration timestamp.
+(the idea is that todo tasks get deleted after the expiration timestamp while
+reminders trigger a notification).
+A task media type can be rendered using 2 different views:
+  - The "default" view contains all the field contents and is used when
+    retrieving a specific task (via the "Show" action).
+  - The "tiny" view does not include the details and is used when retrieving
+    a list of tasks (via the "Index" action).`,
+		Schema: s,
+		Views: goa.Views{
+			"default": []string{"Id", "User", "Kind", "ExpiresAt", "CreatedAt"},
+			"tiny":    []string{"Id", "User", "Details", "Kind", "ExpiresAt", "CreatedAt"},
+		},
+	}
+	r := &goa_TaskResource{
+		Name:        "task",
+		Description: "Task resource",
+		ApiVersion:  "1.0",
+		RoutePrefix: "/tasks",
+		MediaType:   &m,
+		Actions:     map[string]ActionDefinition{},
+	}
+	app.MountHandler("GET", "?since={since}&view={view}", r.Index)
+	app.MountHandler("GET", "/{id:[0-9]+}?view={view}", r.Show)
+	app.MountHandler("POST", "", r.Create)
+	app.MountHandler("PUT", "/{id:[0-9]+}", r.Update)
+	app.MountHandler("DELETE", "/{id:[0-9]+}", r.Delete)
+}
 
 // GET /todo/tasks?[since={since}]&[view={view}]
 func (t *goa_TaskResource) Index(w http.ResponseWriter, r *http.Request) {

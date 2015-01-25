@@ -1,13 +1,14 @@
 package main
 
 import (
+	"go/ast"
 	"io"
 )
 
 // A parsed goa controller, resource or media type definition
 type definition interface {
 	// Generate code for definition
-	generate(io.Writer, *report)
+	generate(io.Writer) error
 }
 
 // Mediatype definition: defines identifier
@@ -19,6 +20,7 @@ type mediaTypeDef struct {
 // Resource directives: version and default media type
 // Interface that defines resource actions
 type resourceDef struct {
+	name       string
 	apiVersion string
 	mediaType  string
 	actions    map[string]*ActionDef
@@ -43,14 +45,14 @@ type controllerDef struct {
 	spec     *ast.TypeSpec
 }
 
-type report struct {
+func (m *mediaTypeDef) generate(output io.Writer) errors {
+	return nil
 }
 
-func (m *mediaTypeDef) generate(output io.Writer) {
+func (m *resourceDef) generate(output io.Writer) errors {
+	return nil
 }
 
-func (m *resourceDef) generate(output io.Writer) {
-}
-
-func (m *controllerDef) generate(output io.Writer) {
+func (m *controllerDef) generate(output io.Writer) errors {
+	return nil
 }

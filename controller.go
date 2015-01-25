@@ -4,6 +4,9 @@ import (
 	"fmt"
 )
 
+// Convenience struct used by generated code
+type Hash map[string]interface{}
+
 type Controller struct {
 	W http.ResponseWriter
 	R *http.Request

@@ -56,17 +56,11 @@ type MediaType struct {
 	Identifier  string               // HTTP media type identifier (http://en.wikipedia.org/wiki/Internet_media_type)
 	Description string               // Description used for documentation
 	Schema      *gojsonschema.Schema // Actual media type definition
-	Views       *Views               // Media type views
+	Views       Views                // Media type views
 }
 
 // Collection of named Views
-type Views map[string]View
-
-// Views have a description and a list of property names
-type View struct {
-	Description string   // View description
-	Properties  []string // Name of properties to include in view
-}
+type Views map[string][]string
 
 // Action definitions describe operation that can be run on resources. They
 // define a route which consists of one ore more pairs of HTTP verb and path.
@@ -98,7 +92,7 @@ type ActionDefinition struct {
 	Name        string
 	Description string
 	Routes      []Route
-	Params      map[string]gojsonschema.JsonSchema
+	Params      map[string]*gojsonschema.JsonSchema
 	Payload     *gojsonschema.JsonSchema
 	Views       []string
 	Responses   map[int]ResponseDefinition
