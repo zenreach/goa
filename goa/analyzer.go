@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"mime"
 	"regexp"
 	"strconv"
@@ -22,62 +23,75 @@ const basePathPrefix = "//@goa BasePath:"
 // Create API definition
 // Extract resources, media types and controllers
 func analyze(packages map[string]*ast.Package) (*apiDescription, errors) {
-	description := newApiDescription()
-	errs := new(errors)
-	types := make(map[string]*ast.TypeSpec)
-
 	// First pass, record all type definitions e.g. so we can find
 	// payload struct definitions in second pass.
-	for _, pkg := range packages {
-		for _, object := range pkg.Scope.Objects {
-			if object.Kind != ast.Typ {
-				continue
-			}
-			spec := object.Decl.(*ast.TypeSpec)
-			types[spec.Name.Name] = spec
-		}
-	}
-
+	types := make(map[string]*ast.TypeSpec)
+	visitTypeSpecs(packages, func(spec *ast.TypeSpec) {
+		types[spec.Name.Name] = spec
+	})
 	// Second pass, actually analyze relevant type definitions
+	description := newApiDescription()
+	errs := new(errors)
+	visitTypeSpecs(packages, func(spec *ast.TypeSpec) {
+		analyzeSpec(spec, description, errs)
+	})
+	return description, *errs
+}
+
+// Traverse packages and apply callback to all type specs
+func visitTypeSpecs(packages map[string]*ast.Package, v func(*ast.TypeSpec)) {
 	for _, pkg := range packages {
-		for _, object := range pkg.Scope.Objects {
-			if object.Kind != ast.Typ {
-				continue
-			}
-			spec := object.Decl.(*ast.TypeSpec)
-			docs := spec.Doc.List
-			for _, d := range docs {
-				if strings.HasPrefix(d.Text, resourcePrefix) {
-					if res, err := analyzeResource(spec); err != nil {
-						errs.add(err)
-					} else {
-						errs.addIf(description.addResource(res))
+		for _, f := range pkg.Files {
+			for _, d := range f.Decls {
+				switch decl := d.(type) {
+				case *ast.GenDecl:
+					if decl.Tok != token.TYPE {
+						continue
 					}
-					break
-				} else if strings.HasPrefix(d.Text, mediaTypePrefix) {
-					if m, err := analyzeMediaType(spec, d.Text); err != nil {
-						errs.add(err)
-					} else {
-						errs.addIf(description.addMediaType(m))
+					for _, s := range decl.Specs {
+						v(s.(*ast.TypeSpec))
 					}
-					break
-				} else if strings.HasPrefix(d.Text, controllerPrefix) {
-					if c, err := analyzeController(spec, d.Text); err != nil {
-						errs.add(err)
-					} else {
-						errs.addIf(description.addController(c))
-					}
-					break
-				} else if strings.HasPrefix(d.Text, goaPrefix) {
-					errs.add(fmt.Errorf("Unknown @goa directive '%s' for type declaration %s, first directive must start with '%s', '%s' or '%s'",
-						d.Text, spec.Name.Name, resourcePrefix,
-						mediaTypePrefix, controllerPrefix))
 				}
 			}
 		}
 	}
+}
 
-	return description, *errs
+// Check whether type spec has goa directives and if so create corresponding
+// construct (resource, controller or media type).
+func analyzeSpec(spec *ast.TypeSpec, description *apiDescription, errs *errors) {
+	docs := spec.Doc
+	if docs == nil {
+		return
+	}
+	for _, d := range docs.List {
+		if strings.HasPrefix(d.Text, resourcePrefix) {
+			if res, err := analyzeResource(spec); err != nil {
+				errs.add(err)
+			} else {
+				errs.addIf(description.addResource(res))
+			}
+			break
+		} else if strings.HasPrefix(d.Text, mediaTypePrefix) {
+			if m, err := analyzeMediaType(spec, d.Text); err != nil {
+				errs.add(err)
+			} else {
+				errs.addIf(description.addMediaType(m))
+			}
+			break
+		} else if strings.HasPrefix(d.Text, controllerPrefix) {
+			if c, err := analyzeController(spec, d.Text); err != nil {
+				errs.add(err)
+			} else {
+				errs.addIf(description.addController(c))
+			}
+			break
+		} else if strings.HasPrefix(d.Text, goaPrefix) {
+			errs.add(fmt.Errorf("Unknown @goa directive '%s' for type declaration %s, first directive must start with '%s', '%s' or '%s'",
+				d.Text, spec.Name.Name, resourcePrefix,
+				mediaTypePrefix, controllerPrefix))
+		}
+	}
 }
 
 // TBD: Check that action parameters use JSON compatible types (numbers, bool or string)

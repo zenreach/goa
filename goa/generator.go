@@ -45,7 +45,7 @@ func generateMediaType(name string, api *apiDescription, o io.Writer) error {
 }
 
 func generateResource(r *resourceDef, api *apiDescription, o io.Writer) error {
-	schema, err := structToSchema(api.mediaTypes[r.mediaType].spec)
+	schema, err := generateJsonSchema(api.mediaTypes[r.mediaType].spec)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,8 @@ func generateController(c *controllerDef, api *apiDescription, o io.Writer) erro
 
 // Generate JSON schema from arbitrary data structure.
 // Struct field tags may be used to specify validation rules.
-func generateJsonSchema(st *ast.StructType) (map[string]interface{}, error) {
+func generateJsonSchema(t *ast.TypeSpec) (map[string]interface{}, error) {
+	st, _ := t.Type.(*ast.StructType)
 	fields := st.Fields.List
 	for _, field := range fields {
 		typ := field.Type
@@ -80,10 +81,6 @@ func generateJsonSchema(st *ast.StructType) (map[string]interface{}, error) {
 // Json schema defining single data type
 func typeSchema(t string) map[string]interface{} {
 	return map[string]interface{}{"type": t}
-}
-
-func structToSchema(s *ast.TypeSpec) (interface{}, error) {
-	return nil, nil
 }
 
 func schemaToSource(s interface{}) string {
