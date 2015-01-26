@@ -17,7 +17,7 @@ import (
 //   - The "tiny" view does not include the details and is used when retrieving
 //     a list of tasks (via the "Index" action).
 //
-//@goa MediaType: "application/vnd.example.todo.task"
+//@goa MediaType: application/vnd.example.todo.task
 type Task struct {
 	// Task identifier
 	Id uint `goa:"MinValue:1,Views:default,tiny"`
@@ -41,7 +41,7 @@ type Task struct {
 // Collection of tasks media type
 // Use "tiny" view to render items
 //
-//@goa MediaType: "application/vnd.example.task;type=collection"
+//@goa MediaType: application/vnd.example.task;type=collection
 type TaskCollection struct {
 	// Total number of tasks
 	Count uint `goa:"Views:default,extended"`
@@ -52,7 +52,7 @@ type TaskCollection struct {
 
 // Not found error media type
 //
-//@goa MediaType: "application/vnd.goa.example.todo.errors.notfound"
+//@goa MediaType: application/vnd.goa.example.todo.errors.notfound
 type ResourceNotFound struct {
 	// Id of resource not found
 	Id uint `goa:"MinValue:1"`
@@ -63,7 +63,7 @@ type ResourceNotFound struct {
 
 // Invalid "since" error media type
 //
-//@goa MediaType: "application/vnd.goa.example.todo.errors.invalidsince"
+//@goa MediaType: application/vnd.goa.example.todo.errors.invalidsince
 type InvalidSince struct {
 	// Original since value
 	Since string
@@ -96,7 +96,7 @@ type TaskDetails struct {
 //
 //@goa Resource
 //@goa Version: 1.0
-//@goa MediaType: Task
+//@goa MediaType: application/vnd.example.task
 //@goa BasePath: /tasks
 type TaskResource interface {
 
@@ -104,15 +104,15 @@ type TaskResource interface {
 	// given date if any.
 	//
 	//@goa GET "?[since={since}]"
-	//@goa 200: "application/vnd.example.todo.task;type=collection"
-	//@goa 400: "application/vnd.goa.example.todo.errors.invalidsince"
+	//@goa 200: application/vnd.example.todo.task;type=collection
+	//@goa 400: application/vnd.goa.example.todo.errors.invalidsince
 	Index(since string) (*TaskCollection, *InvalidSince)
 
 	// Get task string with given id
 	//
 	//@goa GET "/{id}"
-	//@goa 200: "application/vnd.example.todo.task"
-	//@goa 404: "application/vnd.goa.example.todo.errors.notfound"
+	//@goa 200: application/vnd.example.todo.task
+	//@goa 404: application/vnd.goa.example.todo.errors.notfound
 	Show(id uint) (*Task, *ResourceNotFound)
 
 	// Create new task string
@@ -127,13 +127,13 @@ type TaskResource interface {
 	//
 	//@goa PUT "/{id}"
 	//@goa 204:
-	//@goa 404: "application/vnd.goa.example.todo.errors.notfound"
+	//@goa 404: application/vnd.goa.example.todo.errors.notfound
 	Update(body *TaskDetails, id uint) *ResourceNotFound
 
 	// Delete task string
 	//
 	//@goa DELETE "/{id}"
 	//@goa 204:
-	//@goa 404: "application/vnd.goa.example.todo.errors.notfound"
+	//@goa 404: application/vnd.goa.example.todo.errors.notfound
 	Delete(id uint) *ResourceNotFound
 }

@@ -17,7 +17,7 @@ func (e errors) Error() string {
 	}
 	msg := fmt.Sprintf("%d errors:\n", len(e))
 	for i, err := range e {
-		msg += fmt.Sprintf("%d %s\n", i, err.Error())
+		msg += fmt.Sprintf("%d. %s\n", i+1, err.Error())
 	}
 	return msg
 }

@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"go/ast"
+	"go/doc"
 	"io"
 	"sort"
 )
@@ -45,7 +45,7 @@ func generateMediaType(name string, api *apiDescription, o io.Writer) error {
 }
 
 func generateResource(r *resourceDef, api *apiDescription, o io.Writer) error {
-	schema, err := generateJsonSchema(api.mediaTypes[r.mediaType].spec)
+	schema, err := generateJsonSchema(api.mediaTypes[r.mediaType].docs)
 	if err != nil {
 		return err
 	}
@@ -65,16 +65,7 @@ func generateController(c *controllerDef, api *apiDescription, o io.Writer) erro
 
 // Generate JSON schema from arbitrary data structure.
 // Struct field tags may be used to specify validation rules.
-func generateJsonSchema(t *ast.TypeSpec) (map[string]interface{}, error) {
-	st, _ := t.Type.(*ast.StructType)
-	fields := st.Fields.List
-	for _, field := range fields {
-		typ := field.Type
-		fmt.Printf("Type: %v+\n", typ)
-		for _, name := range field.Names {
-			fmt.Printf("Name: %v+\n", name)
-		}
-	}
+func generateJsonSchema(t *doc.Type) (map[string]interface{}, error) {
 	return map[string]interface{}{}, nil
 }
 

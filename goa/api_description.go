@@ -65,8 +65,8 @@ func (a *apiDescription) validate() error {
 		mt := resource.mediaType
 		_, ok := a.mediaTypes[mt]
 		if !ok {
-			return fmt.Errorf("Missing media type "+
-				"%s used by resource %s", mt, name)
+			return fmt.Errorf("Missing media type with identifier "+
+				"'%s' used by resource %s", mt, name)
 		}
 		for n, action := range resource.actions {
 			for _, response := range action.responses {
@@ -74,7 +74,9 @@ func (a *apiDescription) validate() error {
 					_, ok := a.mediaTypes[response.mediaType]
 					if !ok {
 						return fmt.Errorf("Missing media type "+
-							"%s used by action %s of resource %s", mt, n, name)
+							"with identifier %s "+
+							"used by action %s of resource %s",
+							mt, n, name)
 					}
 				}
 			}
