@@ -5,6 +5,10 @@ import (
 	"regexp"
 )
 
+// Convenience wrapper
+type Headers map[string]string
+
+// An action response
 type Response struct {
 	Status    int       // Response status code
 	MediaType MediaType // Response media type if any

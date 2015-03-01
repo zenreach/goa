@@ -2,18 +2,23 @@ package goa
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
 )
 
 // Convenience struct used by generated code
 type Hash map[string]interface{}
 
+// A controller exposes methods used by actions to handle requests.
+// The original net/http package response writer interface and http.Request
+// struct are accessible via the `W` and `R` fields respectively.
 type Controller struct {
 	W http.ResponseWriter
 	R *http.Request
 }
 
 func (c *Controller) Respond(code int) *Response {
-	return &Response{}
+	return &Response{Status: code}
 }
 
 func (c *Controller) RespondBadRequest(msg string) *Response {
@@ -53,6 +58,6 @@ func CheckVersion(r *http.Request, version string) error {
 		}
 	}
 	return fmt.Errorf("Bad or missing API version. Specify with "+
-		"\"?api_version=%s\" param or \"X-API-VERSION=%s\" header.",
+		"\"?api_version=%s\" param or \"X-Api-Version=%s\" header.",
 		version, version)
 }

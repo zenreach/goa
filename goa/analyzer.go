@@ -10,15 +10,40 @@ import (
 	"strings"
 )
 
-// Top directive prefixes
-const goaPrefix = "@goa "
-const resourcePrefix = "@goa Resource"
-const mediaTypePrefix = "@goa MediaType:"
-const controllerPrefix = "@goa Controller:"
+const (
+	// Top directive prefixes
+	goaPrefix        = "@goa "
+	resourcePrefix   = "@goa Resource"
+	mediaTypePrefix  = "@goa MediaType:"
+	controllerPrefix = "@goa Controller:"
 
-// Resource directive prefixes
-const versionPrefix = "@goa Version:"
-const basePathPrefix = "@goa BasePath:"
+	// Resource directive prefixes
+	versionPrefix  = "@goa Version:"
+	basePathPrefix = "@goa BasePath:"
+	namePrefix     = "@goa Name:"
+
+	// Action directive prefixes
+	actionPrefix = "@goa Action:"
+	viewsPrefix  = "@goa Views:"
+)
+
+var (
+	// Action method directive
+	methRegex = regexp.MustCompile(
+		"(GET|POST|PUT|DELETE|OPTIONS|HEAD|TRACE|CONNECT) \"(.*)\"")
+
+	// Action response directive
+	respRegex = regexp.MustCompile(
+		"(100|101|200|201|202|203|204|205|206|300|301|302|303|304|305|307|" +
+			"400|401|402|403|404|405|406|407|408|409|410|411|412|413|414|" +
+			"415|416|417|418|500|501|502|503|504|505):\\s*(.*)")
+
+	// Action response header directive
+	headerRegex = regexp.MustCompile(
+		"(100|101|200|201|202|203|204|205|206|300|301|302|303|304|305|307|" +
+			"400|401|402|403|404|405|406|407|408|409|410|411|412|413|414|" +
+			"415|416|417|418|500|501|502|503|504|505) (.+):\\s*(.+)")
+)
 
 // Analyzer exposes methods to create resource, controller and media type
 // definitions out of go AST packages.
@@ -103,7 +128,7 @@ func (a *analyzer) analyzeType(spec *doc.Type, description *apiDescription, errs
 }
 
 // TBD: Check that action parameters use JSON compatible types (numbers, bool or string)
-func (a *analyzer) analyzeResource(spec *doc.Type) (*resourceDef, error) {
+func (a *analyzer) analyzeResource(spec *doc.Type) (*ResourceDirective, error) {
 	resourceName := spec.Name
 	version := ""
 	mediaType := ""
@@ -132,12 +157,13 @@ func (a *analyzer) analyzeResource(spec *doc.Type) (*resourceDef, error) {
 		return nil, fmt.Errorf("Missing media type directive for resource %s, add a comment starting with %s", resourceName, mediaTypePrefix)
 	}
 	methods := spec.Methods
-	actionDefs := make(map[string]*actionDef, len(methods))
+	ActionDefs := make(map[string]*ActionDirective, len(methods))
 	for _, method := range methods {
 		httpMethod := ""
 		path := ""
-		responses := make(map[int]*responseDef)
+		responses := make(map[int]*ResponseDirective)
 		actionName := method.Name
+		views := []string{}
 		for _, text := range strings.Split(method.Doc, "\n") {
 			if strings.HasPrefix(text, goaPrefix) {
 				if ms := methRegex.FindStringSubmatch(text); ms != nil {
@@ -151,7 +177,7 @@ func (a *analyzer) analyzeResource(spec *doc.Type) (*resourceDef, error) {
 					}
 					r, ok := responses[code]
 					if !ok {
-						r = &responseDef{code: code}
+						r = &ResponseDirective{code: code}
 					}
 					r.mediaType = ms[2]
 				} else if ms = headerRegex.FindStringSubmatch(text); ms != nil {
@@ -162,9 +188,15 @@ func (a *analyzer) analyzeResource(spec *doc.Type) (*resourceDef, error) {
 					}
 					r, ok := responses[code]
 					if !ok {
-						r = &responseDef{code: code}
+						r = &ResponseDirective{code: code}
 					}
 					r.headers[ms[2]] = ms[3]
+				} else if strings.HasPrefix(text, actionPrefix) &&
+					len(text) > len(actionPrefix) {
+					actionName = strings.Trim(text[len(actionPrefix):], " ")
+				} else if strings.HasPrefix(text, viewsPrefix) &&
+					len(text) > len(viewsPrefix) {
+					views = strings.Split(strings.Trim(viewsPrefix, " "), ",")
 				} else {
 					return nil, fmt.Errorf("Unknown goa directive for action %s of resource %s, action directives must start with '//@goa <http method> <action path>', '//@goa <http status code>: [<response media type>]' or '//@goa <status code> <header name>: <header value or regex>'",
 						actionName, resourceName)
@@ -184,25 +216,26 @@ func (a *analyzer) analyzeResource(spec *doc.Type) (*resourceDef, error) {
 			}
 			r.mediaType = mt
 		}
-		actionDefs[actionName] = &actionDef{
+		ActionDefs[actionName] = &ActionDirective{
 			name:      actionName,
 			method:    httpMethod,
 			path:      path,
 			responses: responses,
+			views:     views,
 			docs:      method,
 		}
 	}
-	return &resourceDef{
+	return &ResourceDirective{
 		name:       resourceName,
 		apiVersion: version,
 		basePath:   basePath,
 		mediaType:  mediaType,
-		actions:    actionDefs,
+		actions:    ActionDefs,
 		docs:       spec,
 	}, nil
 }
 
-func (a *analyzer) analyzeMediaType(spec *doc.Type, directive string) (*mediaTypeDef, error) {
+func (a *analyzer) analyzeMediaType(spec *doc.Type, directive string) (*MediaTypeDirective, error) {
 	mediaTypeName := spec.Name
 	identifier := strings.Trim(directive[len(mediaTypePrefix):], " ")
 	mt, _, err := mime.ParseMediaType(identifier)
@@ -211,25 +244,10 @@ func (a *analyzer) analyzeMediaType(spec *doc.Type, directive string) (*mediaTyp
 			identifier, mediaTypeName, err.Error())
 	}
 
-	return &mediaTypeDef{spec.Name, mt, spec}, nil
+	return &MediaTypeDirective{name: spec.Name, identifier: mt, docs: spec}, nil
 }
 
-func (a *analyzer) analyzeController(spec *doc.Type, directive string) (*controllerDef, error) {
+func (a *analyzer) analyzeController(spec *doc.Type, directive string) (*ControllerDirective, error) {
 	resourceName := strings.Trim(directive[len(controllerPrefix):], " ")
-	return &controllerDef{spec.Name, resourceName, spec}, nil
+	return &ControllerDirective{spec.Name, resourceName, spec}, nil
 }
-
-// Action directive regexps
-
-var methRegex = regexp.MustCompile(
-	"(GET|POST|PUT|DELETE|OPTIONS|HEAD|TRACE|CONNECT) \"(.*)\"")
-
-var respRegex = regexp.MustCompile(
-	"(100|101|200|201|202|203|204|205|206|300|301|302|303|304|305|307|" +
-		"400|401|402|403|404|405|406|407|408|409|410|411|412|413|414|" +
-		"415|416|417|418|500|501|502|503|504|505):\\s*(.*)")
-
-var headerRegex = regexp.MustCompile(
-	"(100|101|200|201|202|203|204|205|206|300|301|302|303|304|305|307|" +
-		"400|401|402|403|404|405|406|407|408|409|410|411|412|413|414|" +
-		"415|416|417|418|500|501|502|503|504|505) (.+):\\s*(.+)")

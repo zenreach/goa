@@ -57,7 +57,8 @@ func main() {
 	if err != nil {
 		fail(fmt.Sprintf("Could not open %s (%s)", dest, err.Error()))
 	}
-	errs = generateApi(api, w)
+	g := newGenerator(api)
+	errs = g.generateApi(w)
 	if len(errs) > 0 {
 		fail(errs.Error())
 	}

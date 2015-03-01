@@ -2,80 +2,85 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
-	"go/doc"
 	"io"
 	"sort"
 )
 
+// Generator struct exposes methods to generate API code and documentation.
+type generator struct {
+	api *apiDescription
+}
+
+// Generator factory
+func newGenerator(api *apiDescription) *generator {
+	return &generator{api}
+}
+
 // Generator entry point: generate code for API
-func generateApi(api *apiDescription, w io.Writer) errors {
+func (g *generator) generateApi(w io.Writer) errors {
+	g.generateHeader(w)
 	errs := errors{}
-	names := make([]string, len(api.resources))
+	names := make([]string, len(g.api.resources))
 	idx := 0
-	for name, _ := range api.resources {
+	for name, _ := range g.api.resources {
 		names[idx] = name
 		idx += 1
 	}
 	sort.Strings(names)
-	identifiers := make(map[string]bool, len(api.mediaTypes))
-	for i, _ := range api.mediaTypes {
+	identifiers := make(map[string]bool, len(g.api.mediaTypes))
+	for i, _ := range g.api.mediaTypes {
 		identifiers[i] = true
 	}
 	for _, name := range names {
-		resource, _ := api.resources[name]
-		generateResource(resource, api, w)
-		controller, err := api.resourceCompiler(resource)
-		if err != nil {
-			errs.add(err)
-		} else {
-			generateController(controller, api, w)
-		}
+		resource, _ := g.api.resources[name]
+		g.generateResource(resource, w)
+		c, _ := g.api.resourceCompiler(resource)
+		errs.addIf(g.generateController(c, w))
 		delete(identifiers, resource.mediaType)
-		errs.addIf(generateMediaType(resource.mediaType, api, w))
+		errs.addIf(g.generateMediaType(resource.mediaType, w))
 	}
 	for i, _ := range identifiers {
-		errs.addIf(generateMediaType(i, api, w))
+		errs.addIf(g.generateMediaType(i, w))
 	}
 	return errs
 }
 
-func generateMediaType(name string, api *apiDescription, o io.Writer) error {
+func (g *generator) generateHeader(o io.Writer) {
+	// pwd, _ := os.Getwd()
+	// title := filepath.Base(pwd)
+	// w := newWriter()
+}
+
+func (g *generator) generateMediaType(id string, o io.Writer) error {
 	return nil
 }
 
-func generateResource(r *resourceDef, api *apiDescription, o io.Writer) error {
-	schema, err := generateJsonSchema(api.mediaTypes[r.mediaType].docs)
+func (g *generator) generateResource(r *ResourceDirective, o io.Writer) error {
+	schema, err := g.generateJsonSchema(g.api.mediaTypes[r.mediaType])
 	if err != nil {
 		return err
 	}
+	source, _ := json.MarshalIndent(schema, "", "    ")
 	w := newWriter()
 	w.w("//== %s ==\n\n", r.name)
 	w.w("type goa_%s ResourceDefinition\n\n", r.name)
-	w.w("var goa_%sSchema = %s\n\n", r.mediaType, schemaToSource(schema))
+	w.w("var goa_%sSchema = %s\n\n", g.api.mediaTypes[r.mediaType].name, source)
 	w.w("func goa_Mount%sHandlers(app goa.Application) {\n", r.name)
 
 	w.flush(o)
 	return nil
 }
 
-func generateController(c *controllerDef, api *apiDescription, o io.Writer) error {
+func (g *generator) generateController(controller *ControllerDirective, o io.Writer) error {
 	return nil
 }
 
 // Generate JSON schema from arbitrary data structure.
 // Struct field tags may be used to specify validation rules.
-func generateJsonSchema(t *doc.Type) (map[string]interface{}, error) {
+func (g *generator) generateJsonSchema(m *MediaTypeDirective) (map[string]interface{}, error) {
 	return map[string]interface{}{}, nil
-}
-
-// Json schema defining single data type
-func typeSchema(t string) map[string]interface{} {
-	return map[string]interface{}{"type": t}
-}
-
-func schemaToSource(s interface{}) string {
-	return ""
 }
 
 // Convenience wrapper around buffer

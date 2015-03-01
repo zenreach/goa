@@ -1,0 +1,111 @@
+//***************************************************************************//
+// Boilerplate code for web application .Name
+//
+// Generated {{.Date}}
+// Command: {{`.Command`}}
+//
+// API Routes:
+{{comment .Routes}}
+//
+// Usage:
+//
+//   require "net/http"
+//   require "github.com/raphael/goa"
+//
+//   app := goa.New("")
+//   goa_MountAllHandlers(app)
+//   http.ListenAndServe(":80", app))
+//
+// This code is auto generated, DO NOT MODIFY
+//***************************************************************************//
+
+package main
+
+import (
+	"fmt"
+
+	"github.com/gorilla/mux"
+	"github.com/raphael/goa"
+	"github.com/xeipuuv/gojsonschema"
+)
+
+// Entry point - call this from your code
+func goa_MountAllHandlers(app goa.Application) {
+{{range .MountedHandlers}}
+	{{.}}(app)
+{{end}}
+}
+
+{{range .Resources}}{{with $Resource := .}} 
+//== {{.Name}} ==
+
+type goa_{{$Resource.Name}} goa.ResourceDefinition
+
+var goa_{{.MediaType}}Schema = {{.Schema}}
+
+func goa_Mount{{.Name}}Handlers(app goa.Application) {
+	l := gojsonschema.NewGoLoader(goa_{{.MediaType}}Schema)
+	s, _ := gojsonschema.NewSchema(l)
+	{{with .MediaType}}
+	m := goa.MediaType{
+		Identifier: "{{.Identifier}}",
+		Description: `{{.Description}}`,
+		Schema: s,
+		Views: goa.Views{
+		{{range .Views}}
+			"{{.Name}}": []string{ {{.Properties}} },
+		{{end}}
+		},
+	}
+	{{end}}
+	r := &goa_{{$Resource.Name}}{
+		Name:        "{{$Resource.Name}}",
+		Description: "{{.Description}}",
+		{{if .ApiVersion}}ApiVersion:  "{{.ApiVersion}}",{{end}}
+		RoutePrefix: "{{.BasePath}}",
+		MediaType:   &m,
+		Actions:     as,
+	}
+	{{range .Actions}}
+	app.MountHandler("{{.Method}}", "{{.Path}}", r.{{.Name}})
+	{{end}}
+}
+
+{{range .Actions}}
+// {{.Method}} {{.Path}}
+func (t *goa_{{$Resource.Name}}) {{.Name}}(w http.ResponseWriter, r *http.Request) {
+	c := &{{$Resource.Controller}}{w: w, r: r}
+	{{if $Resource.Version}}
+	if err := goa.CheckVersion(r, "{{$Resource.Version}}"); err != nil {
+		return
+	}
+	{{end}}
+	{{camelizeDown .Name}} := t.actions["{{.Name}}"]
+	{{range .Params}}{{with $varName := (camelizeDown .)}}
+		{{$varName}} := mux.Vars["{{.}}"]
+	{{end}}
+
+	// Call controller Index method
+	res := c.Index(cp0)
+
+	// Validate response
+	err = validateResponse(res, index)
+	if err != nil {
+		c.RespondInternalError("goa: " + err.Error())
+		return
+	}
+
+	// Render media type
+	view, ok := params["view"]
+	if !ok {
+		view := "default"
+	}
+	data := goa_RenderTaskCollection(res, view)
+
+	// Send response
+	c.Send(data)
+}
+
+{{end}}
+
+{{end}}{{end}}

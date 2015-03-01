@@ -20,22 +20,22 @@ import (
 //@goa MediaType: application/vnd.example.todo.task
 type Task struct {
 	// Task identifier
-	Id uint `goa:"MinValue:1,Views:default,tiny"`
+	Id uint `goa:"minValue:1,views:default tiny"`
 
 	// User email
-	User string `goa:"Pattern:/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/"`
+	User string `goa:"pattern:/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/"`
 
 	// Task details
-	Details string `goa:"MinLength:1"`
+	Details string `goa:"minLength:1"`
 
 	// Task kind
-	Kind string `goa:"Enum:todo reminder,goa:"Views:default,tiny"`
+	Kind string `goa:"enum:todo reminder,views:default tiny"`
 
 	// Todo expiration or reminder alarm timestamp
-	ExpiresAt string `format:"time.RFC3339",goa:"Views:default,tiny"`
+	ExpiresAt string `goa:"views:default tiny,format:time.RFC3339"`
 
 	// Creation timestamp
-	CreatedAt string `format:"time.RFC3339",goa:"Views:default,tiny"`
+	CreatedAt string `goa:"views:default tiny,format:time.RFC3339"`
 }
 
 // Collection of tasks media type
@@ -44,10 +44,10 @@ type Task struct {
 //@goa MediaType: application/vnd.example.task;type=collection
 type TaskCollection struct {
 	// Total number of tasks
-	Count uint `goa:"Views:default,extended"`
+	Count uint `goa:"views:default extended"`
 
 	// Tasks
-	Items []*Task `goa:"ViewMappings:default=tiny,extended=default"`
+	Items []*Task `goa:"viewMappings:default=tiny extended=default"`
 }
 
 // Not found error media type
@@ -55,10 +55,10 @@ type TaskCollection struct {
 //@goa MediaType: application/vnd.goa.example.todo.errors.notfound
 type ResourceNotFound struct {
 	// Id of resource not found
-	Id uint `goa:"MinValue:1"`
+	Id uint `goa:"minValue:1"`
 
 	// Type of resource not found
-	Resource string `goa:"MinLength:1"`
+	Resource string `goa:"minLength:1"`
 }
 
 // Invalid "since" error media type
@@ -75,13 +75,13 @@ type InvalidSince struct {
 // Task details, used to by "create" request body
 type TaskDetails struct {
 	// Task kind
-	Kind string `goa:"Enum:todo reminder,Default:todo"`
+	Kind string `goa:"enum:todo reminder,default:todo"`
 
 	// Todo expiration date or reminder alarm
 	ExpiresAt string `format:"time.RFC3339"`
 
 	// Task content
-	Details string `goa:"Required,MinLength:1"`
+	Details string `goa:"required,minLength:1"`
 }
 
 // Task resource
@@ -95,6 +95,7 @@ type TaskDetails struct {
 // and empty bodies.
 //
 //@goa Resource
+//@goa Name: tasks
 //@goa Version: 1.0
 //@goa MediaType: application/vnd.example.task
 //@goa BasePath: /tasks
@@ -104,6 +105,8 @@ type TaskResource interface {
 	// given date if any.
 	//
 	//@goa GET "?[since={since}]"
+	//@goa Action: index
+	//@goa Views: tiny
 	//@goa 200: application/vnd.example.todo.task;type=collection
 	//@goa 400: application/vnd.goa.example.todo.errors.invalidsince
 	Index(since string) (*TaskCollection, *InvalidSince)
@@ -111,6 +114,8 @@ type TaskResource interface {
 	// Get task string with given id
 	//
 	//@goa GET "/{id}"
+	//@goa Action: show
+	//@goa Views: tiny, default
 	//@goa 200: application/vnd.example.todo.task
 	//@goa 404: application/vnd.goa.example.todo.errors.notfound
 	Show(id uint) (*Task, *ResourceNotFound)
@@ -119,6 +124,7 @@ type TaskResource interface {
 	// Return path to newly created task in "Location" header
 	//
 	//@goa POST ""
+	//@goa Action: create
 	//@goa 201:
 	//@goa 201 location: /tasks/\d+
 	Create(body *TaskDetails)
@@ -126,6 +132,7 @@ type TaskResource interface {
 	// Update existing task string text
 	//
 	//@goa PUT "/{id}"
+	//@goa Action: update
 	//@goa 204:
 	//@goa 404: application/vnd.goa.example.todo.errors.notfound
 	Update(body *TaskDetails, id uint) *ResourceNotFound
@@ -133,6 +140,7 @@ type TaskResource interface {
 	// Delete task string
 	//
 	//@goa DELETE "/{id}"
+	//@goa Action: delete
 	//@goa 204:
 	//@goa 404: application/vnd.goa.example.todo.errors.notfound
 	Delete(id uint) *ResourceNotFound

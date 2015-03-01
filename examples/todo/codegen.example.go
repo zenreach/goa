@@ -11,57 +11,61 @@ import (
 	"github.com/raphael/goa"
 )
 
+var (
+	// Media type definitions indexed by identifier
+	mediaTypes map[string]*MediaType
+)
+
 // Entry point - call this in your main
-func goa_MountAllHandlers(app goa.Application) {
-	goa_MountTaskHandlers(app)
+func goa_MountAllResources(app goa.Application) {
+	buildMediaTypes()
+	app.MountResource(buildTaskResource())
 }
 
-//== TaskResource ==
+//== Media Types ==
 
-type goa_TaskResource ResourceDefinition
+// Initialize mediaTypes variable by instantiating all media types
+func buildMediaTypes() {
+	var schema string
+	var description string
+	var views goa.Views
 
-var goa_TaskSchema = goa.Hash{
-	"title": "Task media type",
-	"type":  "object",
-	"properties": goa.Hash{
-		"Id": goa.Hash{
-			"description": "Task identifier",
-			"type":        "integer",
-			"minimum":     1,
-		},
-		"User": goa.Hash{
-			"description": "User email",
-			"type":        "string",
-			"pattern":     "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
-		},
-		"Details": goa.Hash{
-			"type":      "string",
-			"minLength": 1,
-		},
-		"Kind": goa.Hash{
-			"description": "Task kind",
-			"type":        "string",
-			"enum":        []string{"todo", "reminder"},
-		},
-		"ExpiresAt": goa.Hash{
-			"description": "Todo expiration or reminder alarm timestamp",
-			"type":        "string",
-			"format":      "time.RFC3339",
-		},
-		"CreatedAt": goa.Hash{
-			"description": "Creation timestamp",
-			"type":        "string",
-			"format":      "time.RFC3339",
-		},
-	},
-}
-
-func goa_MountTaskHandlers(app goa.Application) {
-	l := gojsonschema.NewGoLoader(goa_TaskSchema)
-	s, _ := gojsonschema.NewSchema(l)
-	m := goa.MediaType{
-		Identifier: "application/vnd.example.todo.task",
-		Description: `Task media type
+	schema = `{
+		"title": "Task media type",
+		"type":  "object",
+		"properties": {
+			"Id": {
+				"description": "Task identifier",
+				"type":        "integer",
+				"minimum":     1,
+			},
+			"User": {
+				"description": "User email",
+				"type":        "string",
+				"pattern":     "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+			},
+			"Details": {
+				"type":      "string",
+				"minLength": 1,
+			},
+			"Kind": {
+				"description": "Task kind",
+				"type":        "string",
+				"enum":        ["todo", "reminder"],
+			},
+			"ExpiresAt": {
+				"description": "Todo expiration or reminder alarm timestamp",
+				"type":        "string",
+				"format":      "time.RFC3339",
+			},
+			"CreatedAt": {
+				"description": "Creation timestamp",
+				"type":        "string",
+				"format":      "time.RFC3339",
+			}
+		}
+	}`
+	description = `Task media type
 A task has a unique id, a kind which can be either 'todo' or 'reminder' and
 details. A task also has a creation timestamp and an expiration timestamp.
 (the idea is that todo tasks get deleted after the expiration timestamp while
@@ -70,30 +74,71 @@ A task media type can be rendered using 2 different views:
   - The "default" view contains all the field contents and is used when
     retrieving a specific task (via the "Show" action).
   - The "tiny" view does not include the details and is used when retrieving
-    a list of tasks (via the "Index" action).`,
-		Schema: s,
-		Views: goa.Views{
-			"default": []string{"Id", "User", "Kind", "ExpiresAt", "CreatedAt"},
-			"tiny":    []string{"Id", "User", "Details", "Kind", "ExpiresAt", "CreatedAt"},
-		},
+    a list of tasks (via the "Index" action).`
+	views = goa.Views{
+		"default": []string{"Id", "User", "Kind", "ExpiresAt", "CreatedAt"},
+		"tiny":    []string{"Id", "User", "Details", "Kind", "ExpiresAt", "CreatedAt"},
 	}
-	r := &goa_TaskResource{
-		Name:        "task",
+	mediaTypes["application/vnd.example.todo.task"] = &goa.MediaType{
+		Identifier:  "appication/vnd.example.todo.task",
+		Description: description,
+		Schema:      schema,
+		Views:       views,
+	}
+}
+
+//== TaskResource ==
+
+func buildTaskResource() *TaskResource {
+	index := goa.ActionDefinition{
+		Name:        "index",
+		Description: "List all tasks optionally filtering only the ones created since given date if any",
+		Method:      "GET",
+		Path:        "?since={since}&view={view}",
+		Params: map[string]string{
+			"view": `{"type": "string"}`,
+		},
+		Queries: map[string]string{
+			"since": `{"type": "string"}`,
+		},
+		Views: []string{"tiny"},
+		Responses: map[int]*ResponseDefinition{
+			200: &ResponseDefinition{
+				Status:    200,
+				MediaType: mediaTypes[""],
+				Headers:   Headers{},
+			},
+			400: &ResponseDefinition{
+				Status:    400,
+				MediaType: mediaTypes[""],
+			},
+		},
+		Handler: taskResourceIndex,
+	}
+	taskResource := goa.ResourceDefinition{
+		Name:        "tasks",
 		Description: "Task resource",
 		ApiVersion:  "1.0",
 		RoutePrefix: "/tasks",
-		MediaType:   &m,
-		Actions:     map[string]ActionDefinition{},
+		MediaType:   mediaTypes["appication/vnd.example.todo.task"],
+		Actions: map[string]ActionDefinition{
+			"Index":  &index,
+			"Show":   &show,
+			"Create": &create,
+			"Update": &update,
+			"Delete": &delete,
+		},
 	}
-	app.MountHandler("GET", "?since={since}&view={view}", r.Index)
-	app.MountHandler("GET", "/{id:[0-9]+}?view={view}", r.Show)
-	app.MountHandler("POST", "", r.Create)
-	app.MountHandler("PUT", "/{id:[0-9]+}", r.Update)
-	app.MountHandler("DELETE", "/{id:[0-9]+}", r.Delete)
+	return &taskResource
 }
 
+// app.MountHandler("GET", "?since={since}&view={view}", r.Index)
+// app.MountHandler("GET", "/{id:[0-9]+}?view={view}", r.Show)
+// app.MountHandler("POST", "", r.Create)
+// app.MountHandler("PUT", "/{id:[0-9]+}", r.Update)
+
 // GET /todo/tasks?[since={since}]&[view={view}]
-func (t *goa_TaskResource) Index(w http.ResponseWriter, r *http.Request) {
+func taskResourceIndex(w http.ResponseWriter, r *http.Request) {
 	c := &TaskController{w: w, r: r}
 	if err := goa.CheckVersion(r, "1.0"); err != nil {
 		return
@@ -142,7 +187,7 @@ func (t *goa_TaskResource) Index(w http.ResponseWriter, r *http.Request) {
 	c.Send(data)
 }
 
-func goa_TaskResourceShow(w http.ResponseWriter, r *http.Request) {
+func taskResourceShow(w http.ResponseWriter, r *http.Request) {
 	c := &TaskController{w: w, r: r}
 	if err := goa.CheckVersion(r, "1.0"); err != nil {
 		c.RespondBadRequest("Bad or missing API version. Specify with \"?api_version=1.0\" param or \"X-API-VERSION=1.0\" header.")
@@ -185,7 +230,7 @@ func goa_TaskResourceShow(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func goa_TaskCreate(w http.ResponseWriter, r *http.Request) {
+func taskResourceCreate(w http.ResponseWriter, r *http.Request) {
 	c := &TaskController{w: w, r: r}
 	if err := goa.CheckVersion(r, "1.0"); err != nil {
 		c.RespondBadRequest("Bad or missing API version. Specify with \"?api_version=1.0\" param or \"X-API-VERSION=1.0\" header.")
@@ -199,7 +244,7 @@ func goa_TaskCreate(w http.ResponseWriter, r *http.Request) {
 	c.Send("")
 }
 
-func goa_TaskUpdate(w http.ResponseWriter, r *http.Request) {
+func taskResourceUpdate(w http.ResponseWriter, r *http.Request) {
 	c := &TaskController{w: w, r: r}
 	if err := goa.CheckVersion(r, "1.0"); err != nil {
 		c.RespondBadRequest("Bad or missing API version. Specify with \"?api_version=1.0\" param or \"X-API-VERSION=1.0\" header.")
@@ -235,7 +280,7 @@ func goa_TaskUpdate(w http.ResponseWriter, r *http.Request) {
 	c.Send("")
 }
 
-func goa_TaskDelete(w http.ResponseWriter, r *http.Request) {
+func taskResourceDelete(w http.ResponseWriter, r *http.Request) {
 	c := &TaskController{w: w, r: r}
 	if err := goa.CheckVersion(r, "1.0"); err != nil {
 		c.RespondBadRequest("Bad or missing API version. Specify with \"?api_version=1.0\" param or \"X-API-VERSION=1.0\" header.")
