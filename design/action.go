@@ -19,7 +19,7 @@ type Action struct {
 	Responses   []*Response  // Set of possible response definitions
 	PathParams  ActionParams // Path parameters if any
 	QueryParams ActionParams // Query string parameters if any
-	Payload     *Blueprint   // Payload blueprint (request body) if any
+	Payload     Object       // Payload blueprint (request body) if any
 }
 
 // Get initializes the action HTTP method to GET and sets the path with the
@@ -91,7 +91,7 @@ func (a *Action) WithParam(name string) *ActionParam {
 }
 
 // WithPayload sets the request payload type.
-func (a *Action) WithPayload(payload *Blueprint) *Action {
+func (a *Action) WithPayload(payload Object) *Action {
 	a.Payload = payload
 	return a
 }

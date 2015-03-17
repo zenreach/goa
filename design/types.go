@@ -225,7 +225,7 @@ func (a *Array) Load(value interface{}) (interface{}, error) {
 	if k == reflect.String {
 		if err := json.Unmarshal([]byte(value.(string)), &arr); err != nil {
 			return nil, &IncompatibleValue{value: value, to: "Array",
-				extra: fmt.Sprintf("failed to decode JSON: %v", err.Error())}
+				extra: fmt.Sprintf("failed to decode JSON: %v", err)}
 		}
 	} else if k == reflect.Slice || k == reflect.Array {
 		v := reflect.ValueOf(value)
@@ -242,7 +242,7 @@ func (a *Array) Load(value interface{}) (interface{}, error) {
 		ev, err := a.ElemType.Load(varr.Index(i).Interface())
 		if err != nil {
 			return nil, &IncompatibleValue{value: value, to: "Array",
-				extra: fmt.Sprintf("cannot load value at index %v: %v", i, err.Error())}
+				extra: fmt.Sprintf("cannot load value at index %v: %v", i, err)}
 		}
 		res = append(res, ev)
 	}
@@ -317,8 +317,7 @@ func (o Object) Load(value interface{}) (interface{}, error) {
 			if err != nil {
 				errors = append(errors, &IncompatibleValue{value,
 					"Object",
-					fmt.Sprintf("could not load property %s: %s", n,
-						err.Error())})
+					fmt.Sprintf("could not load property %s: %s", n, err)})
 				continue
 			}
 		}

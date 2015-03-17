@@ -5,7 +5,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
+
+	"bitbucket.org/pkg/inflect"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/raphael/goa/design"
@@ -70,11 +73,11 @@ func New(name, desc string) Application {
 // be valid. An action is valid if its name is not blank, it has at least one response
 // defined and parameter names are unique.
 // goa calls the handler provider to process requests made to actions of the resource.
-func (app *app) Mount(r *design.Resource, p HandlerProvider) error {
+func (app *app) Mount(r *design.Resource, h *Handler) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
-	if c, err := newController(r, p); err != nil {
+	if err := registerHandler(r, p); err != nil {
 		return err
 	} else {
 		app.controllers = append(app.controllers, c)
@@ -95,6 +98,51 @@ func (app *app) WriteRaml(w io.Writer) {
 // Helper function that prints error that happens during bootstrap and exits.
 func (app *app) fail(err error) {
 	app.bootstrapper.cleanup()
-	fmt.Fprintf(os.Stderr, "Failed to bootstrap application: %s\n", err.Error())
+	fmt.Fprintf(os.Stderr, "Failed to bootstrap application: %s\n", err)
 	os.Exit(1)
+}
+
+// registerHandler validates that the given handler provider produces handlers that implement
+// the given resource and creates a new controller if that's the case or returns an error otherwise.
+func registerHandler(r *design.Resource, handler *Handler) error {
+	if handler == nil {
+		return fmt.Errorf("handler cannot be nil")
+	}
+	v := reflect.ValueOf(handler)
+	for name, action := range r.Actions {
+		methName := name
+		meth := v.MethodByName(methName)
+		if !meth.IsValid() {
+			methName = inflect.Camelize(name)
+			meth = v.MethodByName(methName)
+			if !meth.IsValid() {
+				return nil, fmt.Errorf("handler must implement %s or %s", name, methName)
+			}
+		}
+		t := meth.Type()
+		var paramTypesInOrder []design.DataType
+		if action.Payload != nil {
+			paramTypesInOrder = append(paramTypesInOrder, action.Payload)
+		}
+		for _, p := range action.PathParams {
+			paramTypesInOrder = append(paramTypesInOrder, p.Type)
+		}
+		for _, p := range action.QueryParams {
+			paramTypesInOrder = append(paramTypesInOrder, p.Type)
+		}
+		if len(paramTypesInOrder) != t.NumIn() {
+			return nil, fmt.Errorf("invalid number of parameters for %s, expected %d, got %d",
+				methName, len(paramTypesInOrder), t.NumIn())
+		}
+		for i := 0; i < t.NumIn(); i++ {
+			at := t.In(i)
+			if err := paramTypesInOrder[i].CanLoad(at, ""); err != nil {
+				return nil, fmt.Errorf("Incorrect type for parameter #%d of %s, expected type to be compatible with %v, got %v (%s)",
+					i+1, methName, at, paramTypesInOrder[i].Name(), err)
+			}
+		}
+
+	}
+	handlers[r.Name] = handler
+	return nil
 }

@@ -1,4 +1,4 @@
-package main
+package design
 
 import (
 	"regexp"
@@ -19,20 +19,25 @@ var (
 	TaskPayload Object
 )
 
-func CreateTaskResource() {
+func Main() {
 	// Define media types
-	TaskMediaType = newTaskMediaType()
-	TaskNotFoundMediaType = newResourceNotFoundMediaType()
+	TaskMediaType = taskMediaType()
+	TaskNotFoundMediaType = resourceNotFoundMediaType()
 
 	// Define request payloads
-	TaskPayload = newCreateTaskPayload()
+	TaskPayload = NewObject(
+		TaskMediaType.Object["Owner"].Required(),
+		TaskMediaType.Object["Details"].Required(),
+		TaskMediaType.Object["Kind"].Required(),
+		TaskMediaType.Object["ExpiresAt"].Required())
 
 	// Define task resource
 	TaskResource = NewResource("Task", "/tasks", "Todo task", TaskMediaType)
 	TaskResource.Version = "1.0"
 
 	// Define task actions
-	var show = TaskResource.Show(":id").WithParam("view") // .String() is implicit
+	var show = TaskResource.Show(":id")
+	show.WithParam("view") // .String() is implicit
 	show.Respond(TaskNotFoundMediaType).WithStatus(404)
 
 	var index = TaskResource.Index("")
@@ -53,20 +58,22 @@ func CreateTaskResource() {
 // request payloads that define attributes with identical names.
 // Validations follow the json schema draft 4 validation document -
 // http://json-schema.org/latest/json-schema-validation.html.
-func newTaskMediaType() *MediaType {
+func taskMediaType() *MediaType {
+	// User object
+	user := NewObject(
+		Prop("FirstName", String, "User first name"),
+		Prop("LastName", String, "User last name"),
+		Prop("Email", String, "User email"))
+
 	// Media type object (JSON schema definition)
-	taskObject, err := NewObject(
+	taskObject := NewObject(
 		Prop("Id", Integer, "Task id").Minimum(1),
 		Prop("Href", String, "Task href"),
-		Prop("Owner", newUser(), "Task owner"),
+		Prop("Owner", user, "Task owner"),
 		Prop("Details", String, "Task details").MinLength(1),
 		Prop("Kind", String, "Todo or reminder").Enum("todo", "reminder"),
 		Prop("ExpiresAt", String, "Todo expiration or reminder trigger").Format("date-time"),
 		Prop("CreatedAt", String, "Task creation timestamp").Format("date-time"))
-
-	if err != nil {
-		panic("Failed to create task media type: " + err.Error())
-	}
 
 	task := NewMediaType("application/vnd.acme.task",
 		"Task media type, supports a 'tiny' view for quick indexing.",
@@ -79,45 +86,12 @@ func newTaskMediaType() *MediaType {
 }
 
 // Resource not found response media type, default media type for actions that respond with 404.
-func newResourceNotFoundMediaType() *MediaType {
-	notFoundObject, err := NewObject(
+func resourceNotFoundMediaType() *MediaType {
+	notFoundObject := NewObject(
 		Prop("Id", Integer, "Id of looked up task").Minimum(1),
 		Prop("Resource", String, "Type of looked up resource, e.g. 'tasks'"),
 	)
 
-	if err != nil {
-		panic("Failed to create resource not found media type: " + err.Error())
-	}
-
 	return NewMediaType("application/vnd.acme.task-not-found",
 		"Task not found media type", notFoundObject)
-}
-
-// User object
-func newUser() *Object {
-	user, err := NewObject(
-		Prop("FirstName", String, "User first name"),
-		Prop("LastName", String, "User last name"),
-		Prop("Email", String, "User email"))
-
-	if err != nil {
-		panic("Failed to create user object: " + err.Error())
-	}
-
-	return user
-}
-
-// Create task request payload
-func newCreateTaskPayload() *Object {
-	task, err := NewObject(
-		TaskMediaType.Object["Owner"].Required(),
-		TaskMediaType.Object["Details"].Required(),
-		TaskMediaType.Object["Kind"].Required(),
-		TaskMediaType.Object["ExpiresAt"].Required())
-
-	if err != nil {
-		panic("Failed to create task payload object: " + err.Error())
-	}
-
-	return task
 }

@@ -1,4 +1,4 @@
-package goa
+package writers
 
 import (
 	"fmt"
@@ -10,14 +10,6 @@ import (
 	"text/template"
 
 	"github.com/raphael/goa/design"
-)
-
-const (
-	// Relative path to generated code
-	codegenFileName = "goa_handlers.go"
-
-	// bootstrap flag used by goagen to run code generation
-	bootstrapFlag = "--bootstrap="
 )
 
 // The bootstrapper produces go code that glues the http router with the application controllers.

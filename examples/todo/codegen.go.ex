@@ -1,3 +1,5 @@
+package main
+
 import (
 	"encoding/json"
 	"fmt"
@@ -9,12 +11,12 @@ import (
 
 func UpdateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Initialize controller
-	c := &TaskController{w: w, r: r}
+	h := goa.NewHandler("Task", w, r)
 
 	// Load params
 	id, err := goa.Integer.Load(params.ByName("id"))
 	if err != nil {
-		c.RespondBadRequest(err.Error())
+		h.RespondBadRequest(err.Error())
 	}
 
 	// Load payload
@@ -22,12 +24,12 @@ func UpdateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	var payload TaskUpdate
 	err := decoder.Decode(&payload)
 	if err != nil {
-		c.RespondBadRequest(fmt.Sprintf("Failed to load body: %s", err.Error()))
+		h.RespondBadRequest(fmt.Sprintf("Failed to load body: %s", err))
 	}
 
 	// Call controller Update method
-	c.Update(id, payload)
+	h.Update(id, payload)
 
 	// Send response
-	c.WriteResponse(w)
+	h.WriteResponse(w)
 }
