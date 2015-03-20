@@ -56,17 +56,3 @@ func (r *Response) WithHeader(name string, value string) *Response {
 	r.Header.Set(name, value)
 	return r
 }
-
-// Send bad request response, for use by boostrapped code
-func RespondBadRequest(w http.ResponseWriter, format string, a ...interface{}) {
-	msg := fmt.Sprintf(format, a...)
-	w.WriteHeader(400)
-	w.Write([]byte(msg))
-}
-
-// Send internal error response, for use by bootstrapped code
-func RespondInternalError(w http.ResponseWriter, format string, a ...interface{}) {
-	msg := fmt.Sprintf(format, a...)
-	w.WriteHeader(500)
-	w.Write([]byte(msg))
-}

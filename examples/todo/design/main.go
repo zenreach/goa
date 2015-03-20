@@ -17,6 +17,8 @@ var (
 	TaskNotFoundMediaType *MediaType
 	// Task creation and update request payload
 	TaskPayload Object
+	// Payload 'User'
+	User Object
 )
 
 func Main() {
@@ -36,12 +38,12 @@ func Main() {
 	TaskResource.Version = "1.0"
 
 	// Define task actions
+	var index = TaskResource.Index("")
+	TaskIndexMediaType = index.Responses[0].MediaType
+
 	var show = TaskResource.Show(":id")
 	show.WithParam("view") // .String() is implicit
 	show.Respond(TaskNotFoundMediaType).WithStatus(404)
-
-	var index = TaskResource.Index("")
-	TaskIndexMediaType = index.Responses[0].MediaType
 
 	var create = TaskResource.Create("").WithPayload(TaskPayload)
 	create.RespondNoContent().WithLocation(regexp.MustCompile(`/tasks/[0-9]+$`))
@@ -60,7 +62,7 @@ func Main() {
 // http://json-schema.org/latest/json-schema-validation.html.
 func taskMediaType() *MediaType {
 	// User object
-	user := NewObject(
+	User = NewObject(
 		Prop("FirstName", String, "User first name"),
 		Prop("LastName", String, "User last name"),
 		Prop("Email", String, "User email"))
@@ -69,7 +71,7 @@ func taskMediaType() *MediaType {
 	taskObject := NewObject(
 		Prop("Id", Integer, "Task id").Minimum(1),
 		Prop("Href", String, "Task href"),
-		Prop("Owner", user, "Task owner"),
+		Prop("Owner", User, "Task owner"),
 		Prop("Details", String, "Task details").MinLength(1),
 		Prop("Kind", String, "Todo or reminder").Enum("todo", "reminder"),
 		Prop("ExpiresAt", String, "Todo expiration or reminder trigger").Format("date-time"),

@@ -26,16 +26,13 @@ var (
 func main() {
 	cwd, err := os.Getwd()
 	if err != nil {
-		fail("can't retrieve current directory: %s", err)
+		kingpin.Fatalf("can't retrieve current directory: %s", err)
 	}
 	outputDir := outDir.Default(cwd).String()
 	kingpin.Version("0.0.1")
-	kingpin.Parse()
-	if err != nil {
-		fail(err.Error())
-	}
+	kingpin.FatalIfError(kingpin.Parse())
 	if err := os.MkdirAll(*outputDir, 0755); err != nil {
-		fail("can't create dir %s: %s", *outputDir, err)
+		kingpin.Fatalf("can't create dir %s: %s", *outputDir, err)
 	}
 	var writers []writers.Writer
 	if *middleware {
@@ -51,9 +48,7 @@ func main() {
 		writers = append(writers, writers.NewCliWriter(*designPkg, *cli))
 	}
 	for _, w := range writers {
-		if err := gen(w); err != nil {
-			fail(err)
-		}
+		kingpin.FatalIfError(gen(w))
 	}
 }
 
@@ -98,13 +93,4 @@ func run(dir string, debug bool, path string, args ...string) error {
 	if err != nil {
 		return fmt.Errorf("%s exited with %s", path, err)
 	}
-}
-
-// fail formats and prints an error message and exits the process with status 1.
-func fail(format string, v ...interface{}) {
-	if !strings.HasSuffix(format, "\n") {
-		format += "\n"
-	}
-	fmt.Printf(format, v...)
-	os.Exit(1)
 }

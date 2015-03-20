@@ -26,15 +26,19 @@ import (
 	"os"
 
 	"github.com/raphael/goa"
+	"github.com/raphael/goa/examples/todo/design"
 )
 
 func main() {
-	// Define controllers
-	taskController := new(TaskController)
+	// Initialize resources
+	design.Main()
+
+	// Define handlers
+	taskHandler := new(TaskHandler)
 
 	// Define application
 	app := goa.New("Tasks And Reminder", "Create simple tasks and reminders")
-	app.Mount(taskController)
+	app.Mount(design.TaskResource, taskHandler)
 
 	// Run
 	addr := "localhost:8081"

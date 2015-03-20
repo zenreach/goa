@@ -4,12 +4,13 @@ import (
 	"strconv"
 
 	"github.com/raphael/goa"
+	"github.com/raphael/goa/examples/todo/design"
 	"github.com/raphael/goa/status"
 )
 
 // Task controller implements task resource
-type TaskController struct {
-	*goa.Controller
+type TaskHandler struct {
+	*goa.Handler
 }
 
 // Task owner data structure
@@ -28,17 +29,17 @@ type TaskDetails struct {
 }
 
 // Index
-func (c *TaskController) Index() *goa.Response {
+func (c *TaskHandler) Index() *goa.Response {
 	models := db.LoadAll()
-	body, err := TaskIndexMediaType.Render(models, "default")
+	body, err := design.TaskIndexMediaType.Render(models, "default")
 	if err != nil {
-		return status.InternalError().WithBody(err.Error())
+		return status.InternalError().WithBody(err)
 	}
 	return status.Ok().WithBody(body)
 }
 
 // Show
-func (c *TaskController) Show(id int) *goa.Response {
+func (c *TaskHandler) Show(id int) *goa.Response {
 	m := db.Load(id)
 	if m == nil {
 		return ResourceNotFound(id, "tasks")
@@ -47,13 +48,13 @@ func (c *TaskController) Show(id int) *goa.Response {
 }
 
 // Create
-func (c *TaskController) Create(p *TaskDetails) *goa.Response {
+func (c *TaskHandler) Create(p *TaskDetails) *goa.Response {
 	id := db.Create(p.Details)
-	return status.Created().WithLocation("/task/" + strconv.Itoa(int(id)))
+	return status.Created().WithLocation("/tasks/" + strconv.Itoa(int(id)))
 }
 
 // Update (upsert semantic)
-func (c *TaskController) Update(body *TaskDetails, id int) *goa.Response {
+func (c *TaskHandler) Update(body *TaskDetails, id int) *goa.Response {
 	newId := db.Update(id, body.Details)
 	if newId != id {
 		return status.Created().WithLocation("/tasks/" + strconv.Itoa(int(newId)))
@@ -63,7 +64,7 @@ func (c *TaskController) Update(body *TaskDetails, id int) *goa.Response {
 }
 
 // Delete
-func (c *TaskController) Delete(id int) *goa.Response {
+func (c *TaskHandler) Delete(id int) *goa.Response {
 	if db.Delete(id) == 0 {
 		return ResourceNotFound(id, "tasks")
 	}
