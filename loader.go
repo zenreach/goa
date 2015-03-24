@@ -12,11 +12,13 @@ import (
 	"strings"
 )
 
-// LoadRequestBody decodes the request body. It returns the decoded content or an array of decoded
-// contents in the case of a multipart body.
+// LoadRequestBody decodes the request body. It returns the decoded content or a slice of decoded
+// contents in the case of a multipart body. The decoded content is an interface value corresponding
+// to one of bool, float64, string, []interface{}, map[string]interface{} or nil.
 // The following content types are  supported:
 // application/json, text/json, <anything>+json: body is decoded with the JSON decoder.
-// application/x-www-form-urlencoded: body is read as a url encoded form.
+// application/x-www-form-urlencoded: body is read as a url encoded form. Result is stored in a
+// map[string]interface{}.
 // multipart/<anything>: each part is decoded using the decoder returned by applying this same
 // algorithm to the part content-type header.
 // Returns an error if the content type is not supported or decoding fails.
@@ -36,7 +38,11 @@ func LoadRequestBody(r *http.Request) (interface{}, error) {
 			if err != nil {
 				return nil, fmt.Errorf("fail to read part enveloppe: %s", err)
 			}
-			c, err := loadSingleBody(p.Header.Get("Content-Type"), p)
+			mediaType, _, err := mime.ParseMediaType(p.Header.Get("Content-Type"))
+			if err != nil {
+				return nil, fmt.Errorf("invalid part media type: %s", err)
+			}
+			c, err := loadSingleBody(mediaType, p)
 			if err != nil {
 				return nil, fmt.Errorf("fail to decode part body: %s", err)
 			}

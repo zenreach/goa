@@ -10,6 +10,7 @@ type TaskModel struct {
 	id        int
 	details   string
 	createdAt time.Time
+	expiresAt time.Time
 }
 
 // Implements TaskData
@@ -47,7 +48,7 @@ func (d *Db) Load(id int) *TaskModel {
 }
 
 // Create new task, return its id
-func (d *Db) Create(details string) int {
+func (d *Db) Create(details string, expiresAt time.Time) int {
 	// Dumb and inefficient - do better in real life
 	newId := int(1)
 	for ok := false; !ok; newId += 1 {
@@ -58,14 +59,14 @@ func (d *Db) Create(details string) int {
 			}
 		}
 	}
-	db[newId] = TaskModel{id: newId, details: details}
+	db[newId] = TaskModel{id: newId, details: details, expiresAt: expiresAt}
 	return newId
 }
 
 // Update (upsert semantic), return updated it (new if insert)
-func (d *Db) Update(id int, details string) int {
+func (d *Db) Update(id int, details, expiresAt time.Time) int {
 	if _, ok := db[id]; ok {
-		db[id] = TaskModel{id: id, details: details}
+		db[id] = TaskModel{id: id, details: details, expiresAt: expiresAt}
 		return id
 	}
 	return d.Create(details)

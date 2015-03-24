@@ -67,6 +67,24 @@ func (a *Action) Delete(path string) *Action {
 	return a.method("Delete", path)
 }
 
+// WithParam creates a new query string parameter and returns it.
+// Type is inherited from the resource media type member with the same name.
+// If the resource media type does not define a member with the param name then the type must be
+// set explicitly (with e.g. 'WithParam("foo").Integer()').
+func (a *Action) WithParam(name string) *ActionParam {
+	param := &ActionParam{Name: name}
+	a.QueryParams[name] = param
+	return param
+}
+
+// WithPayload sets the request payload type.
+// Note: Object members may be nil in which case the definition for the member with the same name
+// in the resource media type is used to load and validate request bodies.
+func (a *Action) WithPayload(payload Object) *Action {
+	a.Payload = payload
+	return a
+}
+
 // Respond adds a new action response using the given media type and a
 // status code of 200.
 func (a *Action) Respond(media *MediaType) *Response {
@@ -81,19 +99,6 @@ func (a *Action) RespondNoContent() *Response {
 	r := Response{Status: 204}
 	a.Responses = append(a.Responses, &r)
 	return &r
-}
-
-// WithParam creates a new query string parameter and returns it.
-func (a *Action) WithParam(name string) *ActionParam {
-	var param = &ActionParam{Name: name, Type: String}
-	a.QueryParams[name] = param
-	return param
-}
-
-// WithPayload sets the request payload type.
-func (a *Action) WithPayload(payload Object) *Action {
-	a.Payload = payload
-	return a
 }
 
 // Regular expression used to capture path parameters
@@ -129,10 +134,4 @@ func (a *Action) validate() error {
 		}
 	}
 	return nil
-}
-
-// Generate go signature of controller function that can implement action.
-//
-func (a *Action) signature() string {
-	return ""
 }

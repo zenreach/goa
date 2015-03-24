@@ -27,11 +27,11 @@ func Main() {
 	TaskNotFoundMediaType = resourceNotFoundMediaType()
 
 	// Define request payloads
-	TaskPayload = NewObject(
-		TaskMediaType.Object["Owner"].Required(),
-		TaskMediaType.Object["Details"].Required(),
-		TaskMediaType.Object["Kind"].Required(),
-		TaskMediaType.Object["ExpiresAt"].Required())
+	TaskPayload = Object{
+		"Owner":     TaskMediaType.Object["Owner"],
+		"Details":   TaskMediaType.Object["Details"],
+		"Kind":      TaskMediaType.Object["Kind"],
+		"ExpiresAt": TaskMediaType.Object["ExpiresAt"]}
 
 	// Define task resource
 	TaskResource = NewResource("Task", "/tasks", "Todo task", TaskMediaType)
@@ -62,37 +62,40 @@ func Main() {
 // http://json-schema.org/latest/json-schema-validation.html.
 func taskMediaType() *MediaType {
 	// User object
-	User = NewObject(
-		Prop("FirstName", String, "User first name"),
-		Prop("LastName", String, "User last name"),
-		Prop("Email", String, "User email"))
-
+	User = Object{
+		"FirstName": Member(String, "User first name"),
+		"LastName":  Member(String, "User last name"),
+		"Email":     Member(String, "User email").Format("email"),
+	}
 	// Media type object (JSON schema definition)
-	taskObject := NewObject(
-		Prop("Id", Integer, "Task id").Minimum(1),
-		Prop("Href", String, "Task href"),
-		Prop("Owner", User, "Task owner"),
-		Prop("Details", String, "Task details").MinLength(1),
-		Prop("Kind", String, "Todo or reminder").Enum("todo", "reminder"),
-		Prop("ExpiresAt", String, "Todo expiration or reminder trigger").Format("date-time"),
-		Prop("CreatedAt", String, "Task creation timestamp").Format("date-time"))
-
+	taskObject := Object{
+		"Id":        Member(Integer, "Task id").Minimum(1),
+		"Href":      Member(String, "Task href"),
+		"Owner":     Member(User, "Task owner"),
+		"Details":   Member(String, "Task details").MinLength(1),
+		"Kind":      Member(String, "Todo or reminder").Enum("todo", "reminder"),
+		"ExpiresAt": Member(String, "Todo expiration or reminder trigger").Format("date-time"),
+		"CreatedAt": Member(String, "Task creation timestamp").Format("date-time"),
+	}
 	task := NewMediaType("application/vnd.acme.task",
 		"Task media type, supports a 'tiny' view for quick indexing.",
 		taskObject)
 
+	task.Link("CreatedBy").Using("Owner")
+
 	// Views available to render media type
-	task.AddView("tiny", "Id", "User:tiny", "Kind", "ExpiresAt") // Syntax is "PropertyName[:ViewName]"
+	task.View("Default").As("Id", "Href", "Owner:tiny", "Kind", "ExpiresAt", "CreatedAt").Links("CreatedBy") // Syntax is "PropertyName[:ViewName]
+	task.View("Tiny").As("Id", "Href", "Kind", "ExpiresAt").Links("CreatedBy")
 
 	return task
 }
 
 // Resource not found response media type, default media type for actions that respond with 404.
 func resourceNotFoundMediaType() *MediaType {
-	notFoundObject := NewObject(
-		Prop("Id", Integer, "Id of looked up task").Minimum(1),
-		Prop("Resource", String, "Type of looked up resource, e.g. 'tasks'"),
-	)
+	notFoundObject := Object{
+		"Id":       Member(Integer, "Id of looked up task").Minimum(1),
+		"Resource": Member(String, "Type of looked up resource, e.g. 'tasks'"),
+	}
 
 	return NewMediaType("application/vnd.acme.task-not-found",
 		"Task not found media type", notFoundObject)

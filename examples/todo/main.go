@@ -33,12 +33,9 @@ func main() {
 	// Initialize resources
 	design.Main()
 
-	// Define handlers
-	taskHandler := new(TaskHandler)
-
 	// Define application
 	app := goa.New("Tasks And Reminder", "Create simple tasks and reminders")
-	app.Mount(design.TaskResource, taskHandler)
+	app.Mount("/tasks", TaskRouter())
 
 	// Run
 	addr := "localhost:8081"

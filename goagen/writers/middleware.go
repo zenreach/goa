@@ -140,6 +140,10 @@ func {{.FuncName}}(w http.ResponseWriter, r *http.Request, params httprouter.Par
 		return
 	} {{end}}{{/* if .action.Payload */}}
 	r := h.{{.action.FuncName}}({{if .action.Payload}}payload{{end}}{{if .action.PathParams}}, {{joinNames .action.PathParams}}{{end}}{{if .action.QueryParams}}{{joinNames .action.QueryParams}}{{end}})
+	if r == nil {
+		// Response already written by handler
+		return
+	}
 	{{if .Responses}}ok := false
 	{{range .Responses}}if r.Status == {{.Status}} {
 		ok = true{{if .MediaType}}

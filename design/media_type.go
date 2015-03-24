@@ -10,7 +10,7 @@ import (
 // definitions. An property corresponds to a single member of the media type,
 // it has a name and a type as well as optional validation rules. A link has a
 // name and a URL that points to a related resource.
-// Finally media types also define views which describe which properties and
+// Finally media types also define views which describe which members and
 // links to render when building the response body.
 type MediaType struct {
 	Object
@@ -25,18 +25,20 @@ type MediaType struct {
 type Link struct {
 	Name        string // Link name
 	Description string // Optional description
+	Using       string // Name of field used to render link if not Name
+	View        string // View used to render link if not "link"
 }
 
-// A view defines which properties and links to render when building a response.
-// The view property names must match the names of the parent media type properties.
-// The properties fields are inherited from the parent media type but may be overridden.
+// A view defines which members and links to render when building a response.
+// The view property names must match the names of the parent media type members.
+// The members fields are inherited from the parent media type but may be overridden.
 type View struct {
 	Object
 	Name string
 }
 
 // NewMediaType creates new media type from its identifier, description and type.
-// Initializes a default view that returns all the media type properties.
+// Initializes a default view that returns all the media type members.
 func NewMediaType(id, desc string, o Object) *MediaType {
 	mt := MediaType{Object: o, Identifier: id, Description: desc}
 	defaultView := make(Object, len(o))
@@ -47,22 +49,22 @@ func NewMediaType(id, desc string, o Object) *MediaType {
 	return &mt
 }
 
-// AddView adds a new view to the media type.
+// View adds a new view to the media type.
 // It returns the view so it can be modified further.
 // This method ignore passed-in property names that do not exist in media type.
-func (m *MediaType) AddView(name string, properties ...string) *View {
-	o := make(Object, len(properties))
+func (m *MediaType) View(name string, members ...string) *View {
+	o := make(Object, len(members))
 	i := 0
-	for _, p := range m.Object {
+	for n, p := range m.Object {
 		found := false
-		for _, pr := range properties {
-			if pr == p.Name {
+		for _, m := range members {
+			if m == n {
 				found = true
 				break
 			}
 		}
 		if found {
-			o[p.Name] = p
+			o[n] = p
 			i += 1
 		}
 	}
@@ -179,7 +181,7 @@ func (m *MediaType) validate(rendered map[string]interface{}) error {
 	for n, v := range rendered {
 		p := m.Object[n]
 		for _, validate := range p.Validations {
-			if err := validate(v); err != nil {
+			if err := validate(n, v); err != nil {
 				return err
 			}
 		}

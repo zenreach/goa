@@ -11,59 +11,67 @@ import (
 	"time"
 )
 
-// Required value validation
-func (p *Property) Required() *Property {
-	p.Validations = append(p.Validations, validateRequired(p.Name))
+/* Validation keywords for any instance type */
+
+// http://json-schema.org/latest/json-schema-validation.html#anchor76
+func (p *Member) Enum(val ...interface{}) *Member {
+	p.Validations = append(p.Validations, validateEnum(val))
 	return p
 }
 
 // Set default value
-func (p *Property) Default(def interface{}) *Property {
+func (p *Member) Default(def interface{}) *Member {
 	p.DefaultValue = def
 	return p
 }
 
 // Set string format
-func (p *Property) Format(f string) *Property {
-	p.Validations = append(p.Validations, validateFormat(p.Name, f))
+func (p *Member) Format(f string) *Member {
+	p.Validations = append(p.Validations, validateFormat(f))
 	return p
 }
 
 // Minimum value validation
-func (p *Property) Minimum(val int) *Property {
-	p.Validations = append(p.Validations, validateIntMinimum(p.Name, val))
+func (p *Member) Minimum(val int) *Member {
+	p.Validations = append(p.Validations, validateIntMinimum(val))
 	return p
 }
 
 // Maximum value validation
-func (p *Property) Maximum(val int) *Property {
-	p.Validations = append(p.Validations, validateIntMaximum(p.Name, val))
+func (p *Member) Maximum(val int) *Member {
+	p.Validations = append(p.Validations, validateIntMaximum(val))
 	return p
 }
 
 // Minimum length validation
-func (p *Property) MinLength(val int) *Property {
-	p.Validations = append(p.Validations, validateMinLength(p.Name, val))
+func (p *Member) MinLength(val int) *Member {
+	p.Validations = append(p.Validations, validateMinLength(val))
 	return p
 }
 
 // Maximum length validation
-func (p *Property) MaxLength(val int) *Property {
-	p.Validations = append(p.Validations, validateMaxLength(p.Name, val))
+func (p *Member) MaxLength(val int) *Member {
+	p.Validations = append(p.Validations, validateMaxLength(val))
 	return p
 }
 
-// Enum validation
-func (p *Property) Enum(val ...interface{}) *Property {
-	p.Validations = append(p.Validations, validateEnum(p.Name, val))
+// Maximum length validation
+func (p *Member) Required(names ...string) *Member {
+	if p.Type.Kind() != ObjectType {
+		panic("Required validation must be applied to object types")
+	}
+	p.Validations = append(p.Validations, validateRequired(names))
 	return p
 }
 
 // validateRequired returns a validation function that checks whether given value is nil
-func validateRequired(name string) Validation {
-	return func(val interface{}) error {
-		if val == nil {
-			return fmt.Errorf("Property %s is required.", name)
+func validateRequired(fieldNames []string) Validation {
+	return func(name string, val interface{}) error {
+		mval := val.(map[string]interface{})
+		for _, n := range fieldNames {
+			if _, ok := mval[n]; !ok {
+				return fmt.Errorf("Member %s of %s is required.", n, name)
+			}
 		}
 		return nil
 	}
@@ -86,8 +94,8 @@ var ipv4Regex = regexp.MustCompile(`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`)
 // - "uri": RFC3986 URI value
 // - "mac": IEEE 802 MAC-48, EUI-48 or EUI-64 MAC address value
 // - "cidr": RFC4632 and RFC4291 CIDR notation IP address value
-func validateFormat(name, f string) Validation {
-	return func(val interface{}) error {
+func validateFormat(f string) Validation {
+	return func(name string, val interface{}) error {
 		if val == nil {
 			return nil
 		}
@@ -132,8 +140,8 @@ func validateFormat(name, f string) Validation {
 
 // validateIntMaxValue returns a validation function that checks whether given value is a int that
 // is lesser than max.
-func validateIntMaximum(name string, max int) Validation {
-	return func(val interface{}) error {
+func validateIntMaximum(max int) Validation {
+	return func(name string, val interface{}) error {
 		if val == nil {
 			return nil
 		}
@@ -150,8 +158,8 @@ func validateIntMaximum(name string, max int) Validation {
 
 // validateIntMinValue returns a validation function that checks whether given value is a int that
 // is greater than min.
-func validateIntMinimum(name string, min int) Validation {
-	return func(val interface{}) error {
+func validateIntMinimum(min int) Validation {
+	return func(name string, val interface{}) error {
 		if val == nil {
 			return nil
 		}
@@ -168,8 +176,8 @@ func validateIntMinimum(name string, min int) Validation {
 
 // validateMinLength returns a validation function that checks whether given string or array has
 // at least the number of given characters or elements.
-func validateMinLength(name string, min int) Validation {
-	return func(val interface{}) error {
+func validateMinLength(min int) Validation {
+	return func(name string, val interface{}) error {
 		if val == nil {
 			return nil
 		}
@@ -197,8 +205,8 @@ func validateMinLength(name string, min int) Validation {
 
 // validateMaxLength returns a validation function that checks whether given string or array has
 // at most the number of given characters or elements.
-func validateMaxLength(name string, max int) Validation {
-	return func(val interface{}) error {
+func validateMaxLength(max int) Validation {
+	return func(name string, val interface{}) error {
 		if val == nil {
 			return nil
 		}
@@ -226,8 +234,8 @@ func validateMaxLength(name string, max int) Validation {
 
 // validateEnum returns a validation function that checks whether given value is one of the
 // valid values.
-func validateEnum(name string, valid []interface{}) Validation {
-	return func(val interface{}) error {
+func validateEnum(valid []interface{}) Validation {
+	return func(name string, val interface{}) error {
 		ok := false
 		for _, v := range valid {
 			if v == val {

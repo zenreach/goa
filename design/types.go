@@ -25,7 +25,7 @@ const (
 // and Object for media types) and a "Load" method.
 // The "Load" method checks that the value of the given argument is compatible
 // with the type and returns the coerced value if that's case, an error otherwise.
-// Data types are used to define the type of media type propertys and of action
+// Data types are used to define the type of media type members and of action
 // parameters.
 type DataType interface {
 	Kind() Kind                               // integer, number, string, ...
@@ -217,7 +217,7 @@ func (a *Array) Kind() Kind {
 
 // Load coerces the given value into a []interface{} where the array values have all been coerced recursively.
 // `value` must either be a slice, an array or a string containing a JSON representation of an array.
-// Load also applies any validation rule defined in the array element properties.
+// Load also applies any validation rule defined in the array element members.
 // Returns nil and an error if coercion or validation fails.
 func (a *Array) Load(value interface{}) (interface{}, error) {
 	var arr []interface{}
@@ -264,21 +264,7 @@ func (a *Array) Name() string {
 }
 
 // A JSON object
-type Object map[string]*Property
-
-// NewObjectType creates a new object type from the given properties.
-func NewObject(properties ...*Property) Object {
-	o := make(Object, len(properties))
-	o.Init(properties...)
-	return o
-}
-
-// Init initializes the object properties
-func (o Object) Init(properties ...*Property) {
-	for _, p := range properties {
-		o[p.Name] = p
-	}
-}
+type Object map[string]*Member
 
 // Type kind
 func (o Object) Kind() Kind {
@@ -287,7 +273,7 @@ func (o Object) Kind() Kind {
 
 // Load coerces the given value into a map[string]interface{} where the map values have all been coerced recursively.
 // `value` must either be a map with string keys or to a string containing a JSON representation of a map.
-// Load also applies any validation rule defined in the object properties.
+// Load also applies any validation rule defined in the object members.
 // Returns `nil` and an error if coercion or validation fails.
 func (o Object) Load(value interface{}) (interface{}, error) {
 	// First load from JSON if needed
@@ -305,24 +291,24 @@ func (o Object) Load(value interface{}) (interface{}, error) {
 	// Now go through each type member and load and validate value from map
 	coerced := make(map[string]interface{})
 	var errors []error
-	for n, prop := range o {
+	for n, member := range o {
 		val, ok := m[n]
 		if !ok {
-			if prop.DefaultValue != nil {
-				val = prop.DefaultValue
+			if member.DefaultValue != nil {
+				val = member.DefaultValue
 			}
 		} else {
 			var err error
-			val, err = prop.Type.Load(val)
+			val, err = member.Type.Load(val)
 			if err != nil {
 				errors = append(errors, &IncompatibleValue{value,
 					"Object",
-					fmt.Sprintf("could not load property %s: %s", n, err)})
+					fmt.Sprintf("could not load member %s: %s", n, err)})
 				continue
 			}
 		}
-		for _, validate := range prop.Validations {
-			if err := validate(val); err != nil {
+		for _, validate := range member.Validations {
+			if err := validate(n, val); err != nil {
 				errors = append(errors, err)
 				continue
 			}
@@ -344,16 +330,16 @@ func (o Object) CanLoad(t reflect.Type, context string) error {
 	}
 	for i := 0; i < t.NumField(); i++ {
 		f := t.FieldByIndex([]int{i})
-		name := f.Tag.Get("property")
+		name := f.Tag.Get("member")
 		if len(name) == 0 {
 			name = f.Name
 		}
-		prop, ok := o[name]
+		member, ok := o[name]
 		newContext := fmt.Sprintf("%s.%v", context, f.Name)
 		if !ok {
-			return &IncompatibleType{context: newContext, to: t, extra: "No property with name " + f.Name}
+			return &IncompatibleType{context: newContext, to: t, extra: "No member with name " + f.Name}
 		} else {
-			if err := prop.Type.CanLoad(f.Type, newContext); err != nil {
+			if err := member.Type.CanLoad(f.Type, newContext); err != nil {
 				return err
 			}
 		}
@@ -366,32 +352,12 @@ func (a Object) Name() string {
 	return "object"
 }
 
-// An object property with optional description, default value and validations
-type Property struct {
-	Name         string       // Property name
-	Type         DataType     // Property type
+// An object member with optional description, default value and validations
+type Member struct {
+	Type         DataType     // Member type
 	Description  string       // Optional description
 	Validations  []Validation // Optional validation functions
-	DefaultValue interface{}  // Optional property default value
-}
-
-// Create new property from name and type
-func Prop(n string, t DataType, desc string) *Property {
-	return &Property{Name: n, Description: desc, Type: t}
-}
-
-// Create array property
-func ArrayProp(n, desc string, elemType DataType) *Property {
-	return &Property{Name: n, Description: desc, Type: &Array{ElemType: elemType}}
-}
-
-// Create object property
-func ObjectProp(n, desc string, properties ...*Property) *Property {
-	object := make(Object, len(properties))
-	for _, p := range properties {
-		object[p.Name] = p
-	}
-	return &Property{Name: n, Description: desc, Type: object}
+	DefaultValue interface{}  // Optional member default value
 }
 
 // Error raised when "Load" cannot coerce a value to the data type
@@ -410,7 +376,7 @@ func (e *IncompatibleValue) Error() string {
 	return fmt.Sprintf("Cannot load value %v into a %v%s", e.value, e.to, extra)
 }
 
-// Error raised when a values of given go type cannot be assigned to property's type (by `CanLoad()`)
+// Error raised when a values of given go type cannot be assigned to member's type (by `CanLoad()`)
 type IncompatibleType struct {
 	context string
 	to      reflect.Type

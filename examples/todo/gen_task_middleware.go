@@ -8,8 +8,18 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+func TaskRouter() http.Handler {
+	router := httprouter.New()
+	router.GET("/tasks", IndexTask)
+	router.GET("/tasks/:id", ShowTask)
+	router.POST("/tasks", CreateTask)
+	router.PUT("/tasks/:id", UpdateTask)
+	router.DELETE("/tasks/:id", DeleteTask)
+	return router
+}
+
 func IndexTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	h := goa.NewHandler("Task", w, r)
+	h := NewTaskHandler(w, r)
 	r := h.Index()
 	ok := r.Status == 400
 	if r.Status == 200 {
@@ -20,7 +30,7 @@ func IndexTask(w http.ResponseWriter, r *http.Request, params httprouter.Params)
 		goa.RespondInternalError(fmt.Printf("API bug, code produced unknown status code %d", r.Status))
 		return
 	}
-	h.WriteResponse(r)
+	r.Write(w)
 }
 
 func ShowTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -44,11 +54,9 @@ func ShowTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) 
 		goa.RespondInternalError(fmt.Printf("API bug, code produced unknown status code %d", r.Status))
 		return
 	}
-	h.WriteResponse(r)
-
-	// Send response
-	h.WriteResponse(w)
+	r.Write(w)
 }
+
 func UpdateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Initialize controller
 	h := goa.NewHandler("Task", w, r)
@@ -71,5 +79,5 @@ func UpdateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	h.Update(id, payload)
 
 	// Send response
-	h.WriteResponse(w)
+	r.Write(w)
 }
