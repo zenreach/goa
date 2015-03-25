@@ -64,12 +64,12 @@ func (d *Db) Create(details string, expiresAt time.Time) int {
 }
 
 // Update (upsert semantic), return updated it (new if insert)
-func (d *Db) Update(id int, details, expiresAt time.Time) int {
+func (d *Db) Update(id int, details string, expiresAt time.Time) int {
 	if _, ok := db[id]; ok {
 		db[id] = TaskModel{id: id, details: details, expiresAt: expiresAt}
 		return id
 	}
-	return d.Create(details)
+	return d.Create(details, expiresAt)
 }
 
 // Delete, return deleted id, 0 if not found

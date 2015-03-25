@@ -25,7 +25,7 @@ type MediaType struct {
 type Link struct {
 	Name        string // Link name
 	Description string // Optional description
-	Using       string // Name of field used to render link if not Name
+	Member      string // Name of field used to render link if not Name
 	View        string // View used to render link if not "link"
 }
 
@@ -34,7 +34,8 @@ type Link struct {
 // The members fields are inherited from the parent media type but may be overridden.
 type View struct {
 	Object
-	Name string
+	Links []string
+	Name  string
 }
 
 // NewMediaType creates new media type from its identifier, description and type.
@@ -71,6 +72,41 @@ func (m *MediaType) View(name string, members ...string) *View {
 	view := View{Name: name, Object: o}
 	m.Views[name] = &view
 	return &view
+}
+
+// As sets the list of member names rendered by view.
+// If a member is a media type then the view used to render it defaults to the view with same name.
+// The view used to renber media types members can be explicitely set using the syntax
+// "<member name>:<view name>". For example:
+//     m.View("expanded").As("id", "expensive_attribute:default")
+func (v *View) As(members ...string) *View {
+	o := Object{}
+	for _, m := range members {
+		o[m] = &Member{}
+	}
+	v.Object = o
+	return v
+}
+
+// Links specifies the list of links rendered with this media type.
+func (v *View) Link(links ...string) *View {
+	v.Links = append(v.Links, links...)
+	return v
+}
+
+// As sets the list of member names rendered by view
+
+// Link adds a new link to the media type.
+// It returns the link so it can be modified further.
+func (m *MediaType) Link(name string) *Link {
+	return &Link{Name: name, Member: name}
+}
+
+// Using sets the link Member field.
+// It returns the link so it can be modified further.
+func (l *Link) Using(member string) *Link {
+	l.Member = member
+	return l
 }
 
 // CollectionOf creates a collection media type from its element media type.

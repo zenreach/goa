@@ -63,19 +63,19 @@ func Main() {
 func taskMediaType() *MediaType {
 	// User object
 	User = Object{
-		"FirstName": Member(String, "User first name"),
-		"LastName":  Member(String, "User last name"),
-		"Email":     Member(String, "User email").Format("email"),
+		"FirstName": M(String, "User first name"),
+		"LastName":  M(String, "User last name"),
+		"Email":     M(String, "User email").Format("email"),
 	}
 	// Media type object (JSON schema definition)
 	taskObject := Object{
-		"Id":        Member(Integer, "Task id").Minimum(1),
-		"Href":      Member(String, "Task href"),
-		"Owner":     Member(User, "Task owner"),
-		"Details":   Member(String, "Task details").MinLength(1),
-		"Kind":      Member(String, "Todo or reminder").Enum("todo", "reminder"),
-		"ExpiresAt": Member(String, "Todo expiration or reminder trigger").Format("date-time"),
-		"CreatedAt": Member(String, "Task creation timestamp").Format("date-time"),
+		"Id":        M(Integer, "Task id").Minimum(1),
+		"Href":      M(String, "Task href"),
+		"Owner":     M(User, "Task owner"),
+		"Details":   M(String, "Task details").MinLength(1),
+		"Kind":      M(String, "Todo or reminder").Enum("todo", "reminder"),
+		"ExpiresAt": M(String, "Todo expiration or reminder trigger").Format("date-time"),
+		"CreatedAt": M(String, "Task creation timestamp").Format("date-time"),
 	}
 	task := NewMediaType("application/vnd.acme.task",
 		"Task media type, supports a 'tiny' view for quick indexing.",
@@ -84,8 +84,8 @@ func taskMediaType() *MediaType {
 	task.Link("CreatedBy").Using("Owner")
 
 	// Views available to render media type
-	task.View("Default").As("Id", "Href", "Owner:tiny", "Kind", "ExpiresAt", "CreatedAt").Links("CreatedBy") // Syntax is "PropertyName[:ViewName]
-	task.View("Tiny").As("Id", "Href", "Kind", "ExpiresAt").Links("CreatedBy")
+	task.View("Default").As("Id", "Href", "Owner:tiny", "Kind", "ExpiresAt", "CreatedAt").Link("CreatedBy") // Syntax is "MemberName[:ViewName]
+	task.View("Tiny").As("Id", "Href", "Kind", "ExpiresAt").Link("CreatedBy")
 
 	return task
 }
@@ -93,8 +93,8 @@ func taskMediaType() *MediaType {
 // Resource not found response media type, default media type for actions that respond with 404.
 func resourceNotFoundMediaType() *MediaType {
 	notFoundObject := Object{
-		"Id":       Member(Integer, "Id of looked up task").Minimum(1),
-		"Resource": Member(String, "Type of looked up resource, e.g. 'tasks'"),
+		"Id":       M(Integer, "Id of looked up task").Minimum(1),
+		"Resource": M(String, "Type of looked up resource, e.g. 'tasks'"),
 	}
 
 	return NewMediaType("application/vnd.acme.task-not-found",

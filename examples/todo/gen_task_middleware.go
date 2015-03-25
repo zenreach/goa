@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/raphael/goa"
+	"github.com/raphael/goa/design"
 )
 
 func TaskRouter() http.Handler {
@@ -20,64 +22,98 @@ func TaskRouter() http.Handler {
 
 func IndexTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	h := NewTaskHandler(w, r)
-	r := h.Index()
-	ok := r.Status == 400
-	if r.Status == 200 {
+	resp := h.Index()
+	ok := resp.Status == 400
+	if resp.Status == 200 {
 		ok = true
-		r.Header.Set("Content-Type", "application/vnd.acme.task;collection+json")
+		resp.Header.Set("Content-Type", "application/vnd.acme.task;collection+json")
 	}
 	if !ok {
-		goa.RespondInternalError(fmt.Printf("API bug, code produced unknown status code %d", r.Status))
+		goa.RespondInternalError(w, fmt.Sprintf("API bug, code produced unknown status code %d", resp.Status))
 		return
 	}
-	r.Write(w)
+	resp.Write(w)
 }
 
 func ShowTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	h := goa.NewHandler("Task", w, r)
-	id, err := goa.Integer.Load(params.ByName("id"))
+	h := NewTaskHandler(w, r)
+	id, err := design.Integer.Load(params.ByName("id"))
 	if err != nil {
-		h.RespondBadRequest("invalid param 'id': %s", err)
+		goa.RespondBadRequest(w, "invalid param 'id': %s", err)
 	}
-	view, err := goa.String.Load(params.ByName("view"))
+	view, err := design.String.Load(params.ByName("view"))
 	if err != nil {
-		h.RespondBadRequest("invalid param 'view': %s", err)
+		goa.RespondBadRequest(w, "invalid param 'view': %s", err)
 	}
-	r := h.Show(id, view)
-	ok := r.Status == 400
-	if r.Status == 200 {
+	resp := h.Show(id.(int), view.(string))
+	ok := resp.Status == 400
+	if resp.Status == 200 {
 		ok = true
-		r.Header.Set("Content-Type", "application/vnd.acme.task+json")
+		resp.Header.Set("Content-Type", "application/vnd.acme.task+json")
 	}
 
 	if !ok {
-		goa.RespondInternalError(fmt.Printf("API bug, code produced unknown status code %d", r.Status))
+		goa.RespondInternalError(w, fmt.Sprintf("API bug, code produced unknown status code %d", resp.Status))
 		return
 	}
-	r.Write(w)
+	resp.Write(w)
 }
 
-func UpdateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Initialize controller
-	h := goa.NewHandler("Task", w, r)
-
-	// Load params
-	id, err := goa.Integer.Load(params.ByName("id"))
-	if err != nil {
-		h.RespondBadRequest(err.Error())
-	}
+func CreateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	h := NewTaskHandler(w, r)
 
 	// Load payload
-	decoder := json.NewDecoder(req.Body)
-	var payload design.TaskUpdate
+	decoder := json.NewDecoder(r.Body)
+	var payload CreatePayload
 	err := decoder.Decode(&payload)
 	if err != nil {
-		h.RespondBadRequest(fmt.Sprintf("Failed to load body: %s", err))
+		goa.RespondBadRequest(w, fmt.Sprintf("Failed to load body: %s", err))
 	}
 
 	// Call controller Update method
-	h.Update(id, payload)
+	resp := h.Create(&payload)
 
 	// Send response
-	r.Write(w)
+	resp.Write(w)
+}
+
+func UpdateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	h := NewTaskHandler(w, r)
+	id, err := design.Integer.Load(params.ByName("id"))
+	if err != nil {
+		goa.RespondBadRequest(w, err.Error())
+	}
+
+	// Load payload
+	decoder := json.NewDecoder(r.Body)
+	var payload UpdatePayload
+	err = decoder.Decode(&payload)
+	if err != nil {
+		goa.RespondBadRequest(w, fmt.Sprintf("Failed to load body: %s", err))
+	}
+
+	// Call controller Update method
+	resp := h.Update(&payload, id.(int))
+
+	// Send response
+	resp.Write(w)
+}
+
+func DeleteTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	h := NewTaskHandler(w, r)
+	id, err := design.Integer.Load(params.ByName("id"))
+	if err != nil {
+		goa.RespondBadRequest(w, "invalid param 'id': %s", err)
+	}
+	resp := h.Delete(id.(int))
+	ok := resp.Status == 400
+	if resp.Status == 204 {
+		ok = true
+	}
+
+	if !ok {
+		goa.RespondInternalError(w, fmt.Sprintf("API bug, code produced unknown status code %d", resp.Status))
+		return
+	}
+	resp.Write(w)
 }

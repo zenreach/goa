@@ -360,6 +360,12 @@ type Member struct {
 	DefaultValue interface{}  // Optional member default value
 }
 
+// M is a helper function that creates a member.
+// This is intended for building an object with literal values.
+func M(typ DataType, desc string) *Member {
+	return &Member{Type: typ, Description: desc}
+}
+
 // Error raised when "Load" cannot coerce a value to the data type
 type IncompatibleValue struct {
 	value interface{} // Value being loaded
