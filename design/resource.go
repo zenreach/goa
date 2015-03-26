@@ -28,7 +28,7 @@ type Resource struct {
 
 // NewResource creates a new resource from the given name, base path, description and media type.
 func NewResource(name, path, desc string, mtype *MediaType) *Resource {
-	r := Resource{Name: name, BasePath: path, Description: desc, MediaType: mtype}
+	r := Resource{Name: name, BasePath: path, Description: desc, MediaType: mtype, Actions: make(map[string]*Action)}
 	Resources = append(Resources, &r)
 	return &r
 }
@@ -39,7 +39,7 @@ func (r *Resource) Action(name string) *Action {
 	if action, ok := r.Actions[name]; ok {
 		return action
 	}
-	a := Action{Name: name}
+	a := Action{Name: name, PathParams: make(ActionParams), QueryParams: make(ActionParams)}
 	r.Actions[name] = &a
 	return &a
 }

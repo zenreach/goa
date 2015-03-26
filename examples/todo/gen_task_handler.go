@@ -1,6 +1,10 @@
 package main
 
-import "github.com/raphael/goa"
+import (
+	"time"
+
+	"github.com/raphael/goa"
+)
 
 // Task handler interface
 type TaskHandler interface {
@@ -20,14 +24,14 @@ type User struct {
 
 // Incoming payload struct for create
 type CreatePayload struct {
-	Owner     *User  `json:"owner"`
-	Details   string `json:"details"`
-	Kind      string `json:"kind"`
-	ExpiresAt string `json:"expiresAt"`
+	Owner     *User     `json:"owner"`
+	Details   string    `json:"details"`
+	Kind      string    `json:"kind"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }
 
 // Incoming payload struct for update
 type UpdatePayload struct {
-	Details   string `json:"details"`
-	ExpiresAt string `json:"expiresAt"`
+	Details   string    `json:"details"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }

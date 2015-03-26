@@ -10,12 +10,11 @@ import (
 
 // Task controller struct implements TaskHandler interface.
 type taskHandler struct {
-	*goa.Handler
 }
 
 // Task handler factory, called to handle requests make to task actions
 func NewTaskHandler(w http.ResponseWriter, r *http.Request) TaskHandler {
-	return &taskHandler{&goa.Handler{W: w, R: r}}
+	return &taskHandler{}
 }
 
 // Index
@@ -29,7 +28,7 @@ func (h *taskHandler) Index() *goa.Response {
 }
 
 // Show
-func (h *taskHandler) Show(id int) *goa.Response {
+func (h *taskHandler) Show(id int, view string) *goa.Response {
 	m := db.Load(id)
 	if m == nil {
 		return ResourceNotFound(id, "tasks")

@@ -139,25 +139,27 @@ func {{.FuncName}}(w http.ResponseWriter, r *http.Request, params httprouter.Par
 		goa.RespondBadRequest(w, "error initializing payload data structure: %s", err)
 		return
 	} {{end}}{{/* if .action.Payload */}}
-	r := h.{{.action.FuncName}}({{if .action.Payload}}payload{{end}}{{if .action.PathParams}}, {{joinNames .action.PathParams}}{{end}}{{if .action.QueryParams}}{{joinNames .action.QueryParams}}{{end}})
-	if r == nil {
+	resp := h.{{.action.FuncName}}({{if .action.Payload}}payload{{end}}{{if .action.PathParams}}, {{joinNames .action.PathParams}}{{end}}{{if .action.QueryParams}}{{joinNames .action.QueryParams}}{{end}})
+	if resp == nil {
 		// Response already written by handler
 		return
 	}
-	{{if .Responses}}ok := false
-	{{range .Responses}}if r.Status == {{.Status}} {
-		ok = true{{if .MediaType}}
-		r.Header.Set("Content-Type", "{{.MediaType.Identifier}}+json"){{$name, $value := range .Headers}}
-		{{end}}r.Header.Set("{{$name}}", "{{$value}}")
-	}{{end}}{{$name, $value := range .HeaderPatterns}}
-	h := r.Header.Get("{{$name}}")
+	{{if .Responses}}ok := resp.Status == 400 || resp.Status == 500
+	if !ok {
+		{{range .Responses}}if resp.Status == {{.Status}} {
+			ok = true{{if .MediaType}}
+			resp.Header.Set("Content-Type", "{{.MediaType.Identifier}}+json"){{$name, $value := range .Headers}}
+			{{end}}resp.Header.Set("{{$name}}", "{{$value}}")
+		}{{end}}
+	}{{$name, $value := range .HeaderPatterns}}
+	h := resp.Header.Get("{{$name}}")
 	if !regexp.MatchString("{{$value}}", h) {
 		goa.RespondInternalError(w, fmt.Printf("API bug, code produced invalid ${{name}} header value.", h))
 		return
 	}{{end}}	
 	{{end}} }
 	if !ok {
-		goa.RespondInternalError(w, fmt.Printf("API bug, code produced unknown status code %d", r.Status))
+		goa.RespondInternalError(w, fmt.Printf("API bug, code produced unknown status code %d", resp.Status))
 		return
 	}
 	{{end}}{{/* if .Responses */}}

@@ -23,10 +23,11 @@ type MediaType struct {
 
 // A link contains a URL to a related resource.
 type Link struct {
-	Name        string // Link name
-	Description string // Optional description
-	Member      string // Name of field used to render link if not Name
-	View        string // View used to render link if not "link"
+	Name        string     // Link name
+	Description string     // Optional description
+	Member      *Member    // Member used to render link
+	MediaType   *MediaType // Member used to render link
+	View        string     // View used to render link if not "link"
 }
 
 // A view defines which members and links to render when building a response.
@@ -34,19 +35,16 @@ type Link struct {
 // The members fields are inherited from the parent media type but may be overridden.
 type View struct {
 	Object
-	Links []string
-	Name  string
+	MediaType *MediaType
+	Links     []string
+	Name      string
 }
 
 // NewMediaType creates new media type from its identifier, description and type.
 // Initializes a default view that returns all the media type members.
 func NewMediaType(id, desc string, o Object) *MediaType {
-	mt := MediaType{Object: o, Identifier: id, Description: desc}
-	defaultView := make(Object, len(o))
-	for n, p := range o {
-		defaultView[n] = p
-	}
-	mt.Views["default"] = &View{Name: "default", Object: defaultView}
+	mt := MediaType{Object: o, Identifier: id, Description: desc, Links: make(map[string]*Link)}
+	mt.Views = map[string]*View{"default": &View{Name: "default", Object: o}}
 	return &mt
 }
 
@@ -69,7 +67,7 @@ func (m *MediaType) View(name string, members ...string) *View {
 			i += 1
 		}
 	}
-	view := View{Name: name, Object: o}
+	view := View{Name: name, Object: o, MediaType: m}
 	m.Views[name] = &view
 	return &view
 }
@@ -79,10 +77,20 @@ func (m *MediaType) View(name string, members ...string) *View {
 // The view used to renber media types members can be explicitely set using the syntax
 // "<member name>:<view name>". For example:
 //     m.View("expanded").As("id", "expensive_attribute:default")
-func (v *View) As(members ...string) *View {
+func (v *View) With(members ...string) *View {
 	o := Object{}
 	for _, m := range members {
-		o[m] = &Member{}
+		elems := strings.SplitN(m, ":", 2)
+		mm, ok := v.MediaType.Object[elems[0]]
+		if !ok {
+			panic(fmt.Sprintf("Invalid view member '%s', no such media type member.", m))
+		}
+		if len(elems) > 1 {
+			if mm.Type.Kind() != ObjectType {
+				panic(fmt.Sprintf("Cannot use view '%s' to render media type member '%s': not a media type", elems[1], elems[0]))
+			}
+		}
+		o[m] = mm
 	}
 	v.Object = o
 	return v
@@ -90,22 +98,33 @@ func (v *View) As(members ...string) *View {
 
 // Links specifies the list of links rendered with this media type.
 func (v *View) Link(links ...string) *View {
+	for _, l := range links {
+		if _, ok := v.MediaType.Links[l]; !ok {
+			panic(fmt.Sprintf("Invalid view link '%s', no such media type link.", l))
+		}
+	}
 	v.Links = append(v.Links, links...)
 	return v
 }
 
-// As sets the list of member names rendered by view
-
-// Link adds a new link to the media type.
+// Link adds a new link to the given media type member.
 // It returns the link so it can be modified further.
 func (m *MediaType) Link(name string) *Link {
-	return &Link{Name: name, Member: name}
+	member, ok := m.Object[name]
+	if !ok {
+		panic(fmt.Sprintf("Invalid  link '%s', no such media type member.", name))
+	}
+	link := Link{Name: name, Member: member, MediaType: m}
+	m.Links[name] = &link
+	return &link
 }
 
-// Using sets the link Member field.
+// As overrides the link name.
 // It returns the link so it can be modified further.
-func (l *Link) Using(member string) *Link {
-	l.Member = member
+func (l *Link) As(name string) *Link {
+	delete(l.MediaType.Links, l.Name)
+	l.Name = name
+	l.MediaType.Links[name] = l
 	return l
 }
 
@@ -143,11 +162,11 @@ func (m *MediaType) Render(value interface{}, viewName string) (interface{}, err
 	}
 	switch reflect.TypeOf(value).Kind() {
 	case reflect.Slice:
-		a := value.([]interface{})
-		res := make([]interface{}, len(a))
-		for i, e := range a {
+		s := reflect.ValueOf(value)
+		res := make([]interface{}, s.Len())
+		for i := 0; i < s.Len(); i++ {
 			var err error
-			if res[i], err = m.Render(e, viewName); err != nil {
+			if res[i], err = m.Render(s.Index(i).Interface(), viewName); err != nil {
 				return nil, err
 			}
 		}
@@ -156,8 +175,10 @@ func (m *MediaType) Render(value interface{}, viewName string) (interface{}, err
 		return m.renderStruct(value, viewName)
 	case reflect.Map:
 		return m.renderMap(value.(map[string]interface{}), viewName)
+	case reflect.Ptr:
+		return m.Render(reflect.ValueOf(value).Elem().Interface(), viewName)
 	default:
-		return nil, fmt.Errorf("Rendered value must be either a map or a struct. Given value was a %v.",
+		return nil, fmt.Errorf("Rendered value must be a map, a struct, a slice of maps or structs, or a pointer to one of these. Given value was a %v.",
 			reflect.TypeOf(value))
 	}
 }
@@ -174,11 +195,21 @@ func (m *MediaType) renderStruct(value interface{}, viewName string) (map[string
 	for i := 0; i < numField; i++ {
 		field := t.Field(i)
 		name := field.Name
-		if tag := field.Tag.Get("json"); tag != "" {
-			name = strings.Split(tag, ",")[0]
-		}
-		if _, ok := view.Object[name]; ok {
-			rendered[name] = v.FieldByName(field.Name).Interface()
+		if member, ok := view.Object[name]; ok {
+			raw := v.FieldByName(field.Name).Interface()
+			val, err := member.Type.Load(raw)
+			if err != nil {
+				return nil, err
+			}
+			rendered[name] = val
+		} else {
+			member := m.Object[name]
+			if member == nil {
+				return nil, fmt.Errorf("Cannot render unknown member '%s'", name)
+			}
+			if member.DefaultValue != nil {
+				rendered[name] = member.DefaultValue
+			}
 		}
 	}
 	if err := m.validate(rendered); err != nil {

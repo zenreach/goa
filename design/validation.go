@@ -100,13 +100,13 @@ func validateFormat(f string) Validation {
 			return nil
 		}
 		if sval, ok := val.(string); !ok {
-			return fmt.Errorf("%s has an invalid type, got '%v', need string",
-				name, val)
+			return fmt.Errorf("%s has an invalid type, got '%v' (%s), need string",
+				name, val, reflect.TypeOf(val))
 		} else {
 			var err error
 			switch strings.ToLower(f) {
 			case "date-time":
-				_, err = time.Parse(sval, time.RFC3339)
+				_, err = time.Parse(time.RFC3339, sval)
 			case "email":
 				_, err = mail.ParseAddress(sval)
 			case "hostname":
@@ -132,6 +132,9 @@ func validateFormat(f string) Validation {
 				_, _, err = net.ParseCIDR(sval)
 			default:
 				err = fmt.Errorf("unknown validation format '%s'", f)
+			}
+			if err == nil {
+				return nil
 			}
 			return fmt.Errorf("%s has an invalid value: %s", name, err)
 		}

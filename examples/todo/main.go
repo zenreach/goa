@@ -34,12 +34,11 @@ func main() {
 	design.Main()
 
 	// Define application
-	app := goa.New("Tasks And Reminder", "Create simple tasks and reminders")
+	app := goa.New("Tasks And Reminder", "Create simple tasks", os.Stdout)
 	app.Mount("/tasks", TaskRouter())
 
 	// Run
 	addr := "localhost:8081"
-	l := log.New(os.Stdout, "[todo] ", 0)
-	l.Printf("Listening on %s\n", addr)
-	l.Fatal(http.ListenAndServe(addr, app))
+	log.Printf("Listening on %s\n", addr)
+	log.Fatal(http.ListenAndServe(addr, app))
 }

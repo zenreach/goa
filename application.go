@@ -3,58 +3,50 @@ package goa
 import (
 	"io"
 	"net/http"
+	"strings"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/gorilla/handlers"
 )
 
 // Public interface of a goa application
 type Application interface {
 	// goa applications implement http.Handler.
 	http.Handler
-	// Mount adds a HTTP handler to the application.
-	// The handler is used to handle all routes under the given path prefix.
-	Mount(pathPrefix string, handler http.Handler)
-	// ServeFiles serves files from the given file system root.
-	// The path must end with "/*filepath", files are then served from the local
-	// path /defined/root/dir/*filepath.
-	// For example if root is "/etc" and *filepath is "passwd", the local file
-	// "/etc/passwd" would be served.
-	// To use the operating system's file system implementation,
-	// use http.Dir:
-	//     app.ServeFiles("/src/*filepath", http.Dir("/var/www"))
-	ServeFiles(path string, root http.FileSystem)
-	// WriteRaml writes the RAML representation of the API, see http://raml.org.
-	WriteRaml(io.Writer)
+	// Mount registers the handler for the given prefix.
+	// If a handler already exists for prefix, Handle panics.
+	Mount(prefix string, handler http.Handler)
 }
-
-type Handler func(http.ResponseWriter, *http.Request)
 
 // Internal application data structure
 type app struct {
-	*httprouter.Router
 	Name        string
 	Description string
+	Logger      io.Writer
+	handler     http.Handler
+	mux         *http.ServeMux
 }
 
 // New creates a new goa application.
-func New(name, desc string) Application {
-	router := httprouter.New()
-	app := app{Router: router, Name: name, Description: desc}
+func New(name, desc string, logger io.Writer) Application {
+	mux := http.NewServeMux()
+	handler := http.Handler(mux)
+	if logger != nil {
+		handler = handlers.LoggingHandler(logger, mux)
+	}
+	app := app{Logger: logger, Name: name, Description: desc, handler: handler, mux: mux}
 	return &app
 }
 
-// Mount adds a handler to the application.
-func (app *app) Mount(pathPrefix string, handler http.Handler) {
-	app.Router.Handler("GET", pathPrefix, handler)
-	app.Router.Handler("HEAD", pathPrefix, handler)
-	app.Router.Handler("OPTIONS", pathPrefix, handler)
-	app.Router.Handler("POST", pathPrefix, handler)
-	app.Router.Handler("PUT", pathPrefix, handler)
-	app.Router.Handler("PATCH", pathPrefix, handler)
-	app.Router.Handler("DELETE", pathPrefix, handler)
+// ServerHTTP implements http.Handler.
+// It uses a logging middleware if the logger given to New isn't nil.
+func (app *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	app.handler.ServeHTTP(w, r)
 }
 
-// WriteRaml writes the RAML representation of the API to the given writer.
-// see http://raml.org
-func (app *app) WriteRaml(w io.Writer) {
+// Mount registers the handler for the given prefix.
+// If a handler already exists for prefix, Handle panics.
+func (app *app) Mount(prefix string, handler http.Handler) {
+	p := strings.TrimSuffix(prefix, "/")
+	app.mux.Handle(p, handler)
+	app.mux.Handle(p+"/", handler)
 }

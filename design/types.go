@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 // A Kind represents the specific kind of type that a DataType represents.
@@ -170,7 +171,10 @@ func (b Primitive) Load(value interface{}) (interface{}, error) {
 			}
 		}
 	case StringType:
-		if _, ok := value.(string); ok {
+		switch v := value.(type) {
+		case time.Time:
+			return v.Format(time.RFC3339), nil
+		case string:
 			return value, nil
 		}
 	}

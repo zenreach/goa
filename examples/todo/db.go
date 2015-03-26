@@ -3,54 +3,47 @@ package main
 import "time"
 
 // Emulate DB access
-type Db map[int]TaskModel
+type Db map[int]*TaskModel
 
 // Task model
 type TaskModel struct {
-	id        int
-	details   string
-	createdAt time.Time
-	expiresAt time.Time
+	Id        int
+	Details   string
+	CreatedAt time.Time
+	ExpiresAt time.Time
 }
 
-// Implements TaskData
-func (t *TaskModel) Id() int              { return t.id }
-func (t *TaskModel) Details() string      { return t.details }
-func (t *TaskModel) CreatedAt() time.Time { return t.createdAt }
-
 // Hard coded pre-existing list of task strings
+var now = time.Now()
+var expiresAt = now.Add(1 * time.Hour)
 var db = Db{
-	1: TaskModel{id: 1, details: "Hello world!", createdAt: time.Now()},
-	2: TaskModel{id: 2, details: "Привет мир!", createdAt: time.Now()},
-	3: TaskModel{id: 3, details: "Bonjour monde!", createdAt: time.Now()},
-	4: TaskModel{id: 4, details: "你好世界!", createdAt: time.Now()},
-	5: TaskModel{id: 5, details: "こんにちは世界！", createdAt: time.Now()},
+	1: &TaskModel{Id: 1, Details: "Hello world!", CreatedAt: now, ExpiresAt: expiresAt},
+	2: &TaskModel{Id: 2, Details: "Привет мир!", CreatedAt: now, ExpiresAt: expiresAt},
+	3: &TaskModel{Id: 3, Details: "Bonjour monde!", CreatedAt: now, ExpiresAt: expiresAt},
+	4: &TaskModel{Id: 4, Details: "你好世界!", CreatedAt: now, ExpiresAt: expiresAt},
+	5: &TaskModel{Id: 5, Details: "こんにちは世界！", CreatedAt: now, ExpiresAt: expiresAt},
 }
 
 // Load all tasks
-func (d *Db) LoadAll() []TaskModel {
-	tasks := make([]TaskModel, len(db))
+func (d *Db) LoadAll() []*TaskModel {
 	i := 0
-	for _, model := range db {
-		tasks[i] = model
+	res := make([]*TaskModel, len(db))
+	for _, t := range db {
+		res[i] = t
 		i += 1
 	}
-	return tasks
+	return res
 }
 
 // Load a single task
 func (d *Db) Load(id int) *TaskModel {
-	if t, ok := db[id]; ok {
-		return &t
-	} else {
-		return nil
-	}
+	return db[id]
 }
 
 // Create new task, return its id
 func (d *Db) Create(details string, expiresAt time.Time) int {
 	// Dumb and inefficient - do better in real life
-	newId := int(1)
+	newId := 1
 	for ok := false; !ok; newId += 1 {
 		for id, _ := range db {
 			ok = id != newId
@@ -59,14 +52,14 @@ func (d *Db) Create(details string, expiresAt time.Time) int {
 			}
 		}
 	}
-	db[newId] = TaskModel{id: newId, details: details, expiresAt: expiresAt}
+	db[newId] = &TaskModel{Id: newId, Details: details, ExpiresAt: expiresAt}
 	return newId
 }
 
 // Update (upsert semantic), return updated it (new if insert)
 func (d *Db) Update(id int, details string, expiresAt time.Time) int {
 	if _, ok := db[id]; ok {
-		db[id] = TaskModel{id: id, details: details, expiresAt: expiresAt}
+		db[id] = &TaskModel{Id: id, Details: details, ExpiresAt: expiresAt}
 		return id
 	}
 	return d.Create(details, expiresAt)
@@ -75,8 +68,8 @@ func (d *Db) Update(id int, details string, expiresAt time.Time) int {
 // Delete, return deleted id, 0 if not found
 func (d *Db) Delete(id int) int {
 	_, exists := db[id]
-	delete(db, id)
 	if exists {
+		delete(db, id)
 		return id
 	} else {
 		return 0

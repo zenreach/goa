@@ -30,7 +30,6 @@ func Main() {
 	TaskPayload = Object{
 		"Owner":     TaskMediaType.Object["Owner"],
 		"Details":   TaskMediaType.Object["Details"],
-		"Kind":      TaskMediaType.Object["Kind"],
 		"ExpiresAt": TaskMediaType.Object["ExpiresAt"]}
 
 	// Define task resource
@@ -73,19 +72,19 @@ func taskMediaType() *MediaType {
 		"Href":      M(String, "Task href"),
 		"Owner":     M(User, "Task owner"),
 		"Details":   M(String, "Task details").MinLength(1),
-		"Kind":      M(String, "Todo or reminder").Enum("todo", "reminder"),
 		"ExpiresAt": M(String, "Todo expiration or reminder trigger").Format("date-time"),
 		"CreatedAt": M(String, "Task creation timestamp").Format("date-time"),
 	}
+	// Actual media type
 	task := NewMediaType("application/vnd.acme.task",
 		"Task media type, supports a 'tiny' view for quick indexing.",
 		taskObject)
 
-	task.Link("CreatedBy").Using("Owner")
+	task.Link("Owner").As("CreatedBy")
 
 	// Views available to render media type
-	task.View("Default").As("Id", "Href", "Owner:tiny", "Kind", "ExpiresAt", "CreatedAt").Link("CreatedBy") // Syntax is "MemberName[:ViewName]
-	task.View("Tiny").As("Id", "Href", "Kind", "ExpiresAt").Link("CreatedBy")
+	task.View("default").With("Id", "Href", "Owner:tiny", "Details", "ExpiresAt", "CreatedAt").Link("CreatedBy") // Syntax is "MemberName[:ViewName]
+	task.View("tiny").With("Id", "Href", "ExpiresAt").Link("CreatedBy")
 
 	return task
 }

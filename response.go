@@ -76,19 +76,20 @@ func (r *Response) WithBody(body interface{}) *Response {
 	if body == nil {
 		return r
 	}
-	if b, ok := body.(string); ok {
+	switch b := body.(type) {
+	case error:
+		r.Body = strings.NewReader(b.Error())
+	case string:
 		r.Body = strings.NewReader(b)
-		return r
-	}
-	if b, ok := body.(io.Reader); ok {
+	case io.Reader:
 		r.Body = b
-		return r
-	}
-	if b, err := json.Marshal(body); err != nil {
-		r.Body = strings.NewReader(fmt.Sprintf("API Bug: failed to serialize response: %s", err))
-		r.Status = 500
-	} else {
-		r.Body = bytes.NewBuffer(b)
+	default:
+		if b, err := json.Marshal(body); err != nil {
+			r.Body = strings.NewReader(fmt.Sprintf("API Bug: failed to serialize response: %s", err))
+			r.Status = 500
+		} else {
+			r.Body = bytes.NewBuffer(b)
+		}
 	}
 	return r
 }
@@ -111,22 +112,14 @@ func (r *Response) WithHeader(name string, value string) *Response {
 
 // Write serializes the response body with JSON and writes it to the given response writer.
 func (r *Response) Write(w http.ResponseWriter) {
-	var b []byte
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		RespondInternalError(w, "API bug, failed to read response body: %s", err)
 		return
 	}
-	if len(body) > 0 {
-		var err error
-		if b, err = json.Marshal(body); err != nil {
-			RespondInternalError(w, "API bug, failed to serialize response body: %s", err)
-			return
-		}
-	}
-	r.Header.Set("Content-Length", strconv.Itoa(len(b)))
+	r.Header.Set("Content-Length", strconv.Itoa(len(body)))
 	writeHeaders(w, r)
-	w.Write(b)
+	w.Write(body)
 }
 
 // Max number of bytes read and sent in each chunk when streaming response
@@ -161,5 +154,9 @@ func writeHeaders(w http.ResponseWriter, r *Response) {
 
 // vanillaResponse returns a default response for the given HTTP status code
 func vanillaResponse(status int) *Response {
-	return &Response{Status: status, Body: strings.NewReader(http.StatusText(status))}
+	return &Response{
+		Status: status,
+		Body:   strings.NewReader(http.StatusText(status)),
+		Header: make(http.Header),
+	}
 }
