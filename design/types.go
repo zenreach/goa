@@ -282,13 +282,17 @@ func (o Object) Kind() Kind {
 func (o Object) Load(value interface{}) (interface{}, error) {
 	// First load from JSON if needed
 	var m map[string]interface{}
-	switch value.(type) {
+	switch v := value.(type) {
 	case string:
-		if err := json.Unmarshal([]byte(value.(string)), &m); err != nil {
-			return nil, &IncompatibleValue{value: value, to: "Object", extra: "string is not a JSON object"}
+		if err := json.Unmarshal([]byte(v), &m); err != nil {
+			return nil, &IncompatibleValue{
+				value: v,
+				to:    "Object",
+				extra: "string is not a JSON object",
+			}
 		}
 	case map[string]interface{}:
-		m = value.(map[string]interface{})
+		m = v
 	default:
 		return nil, &IncompatibleValue{value: value, to: "Object"}
 	}
@@ -296,25 +300,27 @@ func (o Object) Load(value interface{}) (interface{}, error) {
 	coerced := make(map[string]interface{})
 	var errors []error
 	for n, member := range o {
-		val, ok := m[n]
-		if !ok {
+		val, _ := m[n]
+		if val == nil {
 			if member.DefaultValue != nil {
 				val = member.DefaultValue
 			}
 		} else {
 			var err error
-			val, err = member.Type.Load(val)
+			val, err = member.Load(n, val)
 			if err != nil {
-				errors = append(errors, &IncompatibleValue{value,
+				errors = append(errors, &IncompatibleValue{
+					value,
 					"Object",
-					fmt.Sprintf("could not load member %s: %s", n, err)})
+					fmt.Sprintf("could not load member %s: %s", n, err),
+				})
 				continue
 			}
-		}
-		for _, validate := range member.Validations {
-			if err := validate(n, val); err != nil {
-				errors = append(errors, err)
-				continue
+			for _, validation := range member.Validations {
+				if err := validation(n, val); err != nil {
+					errors = append(errors, err)
+					continue
+				}
 			}
 		}
 		coerced[n] = val
@@ -364,10 +370,37 @@ type Member struct {
 	DefaultValue interface{}  // Optional member default value
 }
 
+// A validation takes a value and produces nil on success or an error otherwise
+type Validation func(name string, val interface{}) error
+
 // M is a helper function that creates a member.
-// This is intended for building an object with literal values.
+// M is intended for declaring a literal object.
+// Usage:
+//    obj := Object{"Name": M{String, "Object name"}}
 func M(typ DataType, desc string) *Member {
 	return &Member{Type: typ, Description: desc}
+}
+
+// Create member from object.
+// Useful to define a payload member from a media type for example.
+// Usage:
+//    createPayload := From(TaskMediaType.Object).Required("Details")
+func From(o Object) *Member {
+	return &Member{Type: o}
+}
+
+// Load calls load on the underlying type then runs any member validation.
+func (m *Member) Load(name string, value interface{}) (interface{}, error) {
+	res, err := m.Type.Load(value)
+	if err != nil {
+		return nil, err
+	}
+	for _, validation := range m.Validations {
+		if err := validation(name, res); err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 // Error raised when "Load" cannot coerce a value to the data type

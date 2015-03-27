@@ -6,9 +6,6 @@ type ActionParam struct {
 	Member *Member
 }
 
-// A validation takes a value and produces nil on success or an error otherwise
-type Validation func(name string, val interface{}) error
-
 // A map of action parameters indexed by name
 type ActionParams map[string]*ActionParam
 

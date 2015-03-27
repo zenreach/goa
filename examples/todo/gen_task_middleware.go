@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -63,11 +63,22 @@ func CreateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	h := NewTaskHandler(w, r)
 
 	// Load payload
-	decoder := json.NewDecoder(r.Body)
-	var payload CreatePayload
-	err := decoder.Decode(&payload)
+	res := design.Resources["Task"]
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		goa.RespondBadRequest(w, fmt.Sprintf("Failed to load body: %s", err))
+		goa.RespondBadRequest(w, err.Error())
+		return
+	}
+	raw, err := res.Actions["Create"].Payload.Load("payload", string(body))
+	if err != nil {
+		goa.RespondBadRequest(w, err.Error())
+		return
+	}
+	var payload CreatePayload
+	err = goa.InitStruct(&payload, raw.(map[string]interface{}))
+	if err != nil {
+		goa.RespondBadRequest(w, err.Error())
+		return
 	}
 	resp := h.Create(&payload)
 	ok := resp.Status == 400 || resp.Status == 500
@@ -87,11 +98,23 @@ func UpdateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params
 	if err != nil {
 		goa.RespondBadRequest(w, err.Error())
 	}
-	decoder := json.NewDecoder(r.Body)
-	var payload UpdatePayload
-	err = decoder.Decode(&payload)
+	// Load payload
+	res := design.Resources["Task"]
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		goa.RespondBadRequest(w, fmt.Sprintf("Failed to load body: %s", err))
+		goa.RespondBadRequest(w, err.Error())
+		return
+	}
+	raw, err := res.Actions["Update"].Payload.Load("payload", string(body))
+	if err != nil {
+		goa.RespondBadRequest(w, err.Error())
+		return
+	}
+	var payload UpdatePayload
+	err = goa.InitStruct(&payload, raw.(map[string]interface{}))
+	if err != nil {
+		goa.RespondBadRequest(w, err.Error())
+		return
 	}
 	resp := h.Update(&payload, id.(int))
 	ok := resp.Status == 400 || resp.Status == 500

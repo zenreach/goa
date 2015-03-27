@@ -3,49 +3,58 @@ package goa
 import (
 	"fmt"
 	"reflect"
+	"time"
 )
 
 // InitStruct loads data from a map into a struct recursively.
 func InitStruct(inited interface{}, data map[string]interface{}) error {
-	initType := reflect.TypeOf(inited)
-	if initType == nil || initType.Kind() != reflect.Ptr {
-		return fmt.Errorf("invalid inited value, must be a pointer - got %v", initType)
+	initVal := reflect.ValueOf(inited)
+	if initVal.Kind() != reflect.Ptr {
+		return fmt.Errorf("invalid inited value, must be a pointer - got %s", initVal.Type().Name())
 	}
-	sType := initType.Elem()
-	if sType == nil || sType.Kind() != reflect.Struct {
-		return fmt.Errorf("invalid inited value, must be a pointer on struct - got pointer on %v", sType)
+	sVal := initVal.Elem()
+	if sVal.Kind() != reflect.Struct {
+		return fmt.Errorf("invalid inited value, must be a pointer on struct - got pointer on %s", sVal.Type().Name())
 	}
-	value := reflect.Zero(sType)
-	if err := initData(reflect.ValueOf(value), reflect.ValueOf(data), ""); err != nil {
+	if err := initData(sVal, reflect.ValueOf(data)); err != nil {
 		return err
 	}
-	reflect.ValueOf(inited).Elem().Set(value)
 	return nil
 }
 
 // Initialize data structure recursively using provided data (map of string to interface).
-// Last argument is path to field currently being init'ed (using dot notation).
-func initData(value reflect.Value, data reflect.Value, attPrefix string) error {
+func initData(value reflect.Value, data reflect.Value) error {
 	for _, k := range data.MapKeys() {
-		key := k.String()
-		if len(attPrefix) > 0 {
-			key = attPrefix + "." + key
+		val := data.MapIndex(k).Interface()
+		if val == nil {
+			// This is OK, maybe the payload object defines less fields than
+			// the object used to load the data but the extra fields are all nil.
+			continue
 		}
+		key := k.String()
 		f := value.FieldByName(key)
 		if !f.IsValid() {
-			return fmt.Errorf("unknown %v field '%s'", value.Type(), key)
+			return fmt.Errorf("unknown %v field '%s'", value.Type().Name(), key)
 		}
 		if !f.CanSet() {
 			return fmt.Errorf("%v field '%s' cannot be written to, is it public?",
-				value.Type(), key)
+				value.Type().Name(), key)
 		}
-		val := data.MapIndex(k).Elem()
-		if val.Type().Kind() == reflect.Map {
-			if err := initData(f, val, key); err != nil {
+		d := reflect.ValueOf(val)
+		if d.Kind() == reflect.Invalid || d.Interface() == nil {
+			// No value for that field
+			continue
+		}
+		if d.Kind() == reflect.Map {
+			if f.Kind() != reflect.Ptr {
+				return fmt.Errorf("invalid field %v, must be a struct pointer but is a %s", key, f.Kind())
+			}
+			f = f.Elem()
+			if err := initData(f, d); err != nil {
 				return err
 			}
 		} else {
-			if err := setFieldValue(f, val, key); err != nil {
+			if err := setFieldValue(f, d, key); err != nil {
 				return err
 			}
 		}
@@ -57,13 +66,21 @@ func initData(value reflect.Value, data reflect.Value, attPrefix string) error {
 // setFieldValue loads given value into given struct field.
 // Value type must be a JSON schema primitive type.
 func setFieldValue(field, value reflect.Value, fieldName string) error {
-	if err := validateFieldKind(field, value.Kind(), fieldName); err != nil {
-		return fmt.Errorf("field '%s': %s", fieldName, err)
-	}
 	// value must be a string, int, float64, bool, array or map of values
 	switch value.Kind() {
 	case reflect.String:
-		field.SetString(value.String())
+		if _, ok := field.Interface().(time.Time); ok {
+			// Make a special case for time.Time struct fields as this is a common
+			// occurrence.
+			t, err := time.Parse(time.RFC3339, value.Interface().(string))
+			if err != nil {
+				return fmt.Errorf("field '%s': invalid time value %v",
+					fieldName, value.Interface())
+			}
+			field.Set(reflect.ValueOf(t))
+		} else {
+			field.SetString(value.String())
+		}
 	case reflect.Int:
 		i := value.Int()
 		if !field.OverflowInt(i) {
@@ -88,6 +105,8 @@ func setFieldValue(field, value reflect.Value, fieldName string) error {
 				return fmt.Errorf("field '%s' item %d: %s", fieldName, i, err)
 			}
 		}
+	default:
+		return fmt.Errorf("unsupported data type %s for field '%s'", value.Kind(), fieldName)
 	}
 
 	return nil

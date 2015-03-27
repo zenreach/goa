@@ -11,7 +11,7 @@ import (
 
 // All known resources.
 // goa keeps track of resources created via NewResource for code generation.
-var Resources []*Resource
+var Resources map[string]*Resource
 
 // A REST resource
 // Defines a media type and a set of actions that can be executed through HTTP requests.
@@ -28,8 +28,20 @@ type Resource struct {
 
 // NewResource creates a new resource from the given name, base path, description and media type.
 func NewResource(name, path, desc string, mtype *MediaType) *Resource {
-	r := Resource{Name: name, BasePath: path, Description: desc, MediaType: mtype, Actions: make(map[string]*Action)}
-	Resources = append(Resources, &r)
+	if Resources == nil {
+		Resources = make(map[string]*Resource)
+	}
+	if _, ok := Resources[name]; ok {
+		panic(fmt.Sprintf("Resource %s already defined", name))
+	}
+	r := Resource{
+		Name:        name,
+		BasePath:    path,
+		Description: desc,
+		MediaType:   mtype,
+		Actions:     make(map[string]*Action),
+	}
+	Resources[name] = &r
 	return &r
 }
 
@@ -60,7 +72,7 @@ func (r *Resource) Index(p string) *Action {
 // ":id" path parameter.
 // Also defines default response with status 200 and same media type as resource.
 func (r *Resource) Show(p string) *Action {
-	a := r.Action("show").Get(path.Join(r.BasePath, p))
+	a := r.Action("Show").Get(path.Join(r.BasePath, p))
 	a.Description = fmt.Sprintf("Retrieve %s.",
 		strings.ToLower(inflect.Singularize(r.Name)))
 	a.Respond(r.MediaType)
@@ -71,7 +83,7 @@ func (r *Resource) Show(p string) *Action {
 // Sets HTTP method to POST and initializes path with resource base path.
 // Also defines default response with status 201 and "Location" header.
 func (r *Resource) Create(p string) *Action {
-	a := r.Action("create").Post(path.Join(r.BasePath, p))
+	a := r.Action("Create").Post(path.Join(r.BasePath, p))
 	a.Description = fmt.Sprintf("Create new %s.", strings.ToLower(inflect.Singularize(r.Name)))
 	loc := regexp.MustCompile(fmt.Sprintf("^%s", regexp.QuoteMeta(r.BasePath)))
 	a.RespondNoContent().WithLocation(loc)
@@ -83,7 +95,7 @@ func (r *Resource) Create(p string) *Action {
 // with ":id" path parameter.
 // Also defines default response with status 204 and no media type.
 func (r *Resource) Update(p string) *Action {
-	a := r.Action("update").Put(path.Join(r.BasePath, p))
+	a := r.Action("Update").Put(path.Join(r.BasePath, p))
 	a.Description = fmt.Sprintf("Replace content of %s.",
 		strings.ToLower(inflect.Singularize(r.Name)))
 	a.RespondNoContent()
@@ -95,7 +107,7 @@ func (r *Resource) Update(p string) *Action {
 // appended with ":id" path parameter.
 // Also defines default response with status 204 and no media type.
 func (r *Resource) Patch(p string) *Action {
-	a := r.Action("patch").Patch(path.Join(r.BasePath, p))
+	a := r.Action("Patch").Patch(path.Join(r.BasePath, p))
 	a.Description = fmt.Sprintf("Update given fields of %s.",
 		strings.ToLower(inflect.Singularize(r.Name)))
 	a.RespondNoContent()
@@ -107,7 +119,7 @@ func (r *Resource) Patch(p string) *Action {
 // with ":id" path parameter.
 // Also defines default response with status 204 and no media type.
 func (r *Resource) Delete(p string) *Action {
-	a := r.Action("delete").Delete(path.Join(r.BasePath, p))
+	a := r.Action("Delete").Delete(path.Join(r.BasePath, p))
 	a.Description = fmt.Sprintf("Delete %s.",
 		strings.ToLower(inflect.Singularize(r.Name)))
 	a.RespondNoContent()

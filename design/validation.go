@@ -69,8 +69,8 @@ func validateRequired(fieldNames []string) Validation {
 	return func(name string, val interface{}) error {
 		mval := val.(map[string]interface{})
 		for _, n := range fieldNames {
-			if _, ok := mval[n]; !ok {
-				return fmt.Errorf("Member %s of %s is required.", n, name)
+			if v := mval[n]; v == nil {
+				return fmt.Errorf("%s member '%s' is missing.", name, n)
 			}
 		}
 		return nil
@@ -100,7 +100,7 @@ func validateFormat(f string) Validation {
 			return nil
 		}
 		if sval, ok := val.(string); !ok {
-			return fmt.Errorf("%s has an invalid type, got '%v' (%s), need string",
+			return fmt.Errorf("type of %s is invalid, got '%v' (%s), need string",
 				name, val, reflect.TypeOf(val))
 		} else {
 			var err error
@@ -111,17 +111,17 @@ func validateFormat(f string) Validation {
 				_, err = mail.ParseAddress(sval)
 			case "hostname":
 				if !hostnameRegex.MatchString(sval) {
-					err = fmt.Errorf("invalid hostname value '%s', does not match %s",
+					err = fmt.Errorf("hostname value '%s' does not match %s",
 						sval, hostnameRegex.String())
 				}
 			case "ipv4", "ipv6":
 				ip := net.ParseIP(sval)
 				if ip == nil {
-					err = fmt.Errorf("invalid %s value '%s'", f, sval)
+					err = fmt.Errorf("\"%s\" is an invalid %s value", sval, f)
 				}
 				if f == "ipv4" {
 					if !ipv4Regex.MatchString(sval) {
-						err = fmt.Errorf("invalid IPv4 value '%s'", sval)
+						err = fmt.Errorf("\"%s\" is an invalid ipv4 value", sval)
 					}
 				}
 			case "uri":
@@ -136,7 +136,7 @@ func validateFormat(f string) Validation {
 			if err == nil {
 				return nil
 			}
-			return fmt.Errorf("%s has an invalid value: %s", name, err)
+			return fmt.Errorf("invalid %s value, %s", name, err)
 		}
 	}
 }
@@ -149,11 +149,11 @@ func validateIntMaximum(max int) Validation {
 			return nil
 		}
 		if ival, ok := val.(int); !ok {
-			return fmt.Errorf("%s has an invalid type, got '%v', need integer",
+			return fmt.Errorf("type of %s is invalid, got '%v', need integer",
 				name, val)
 		} else if ival > max {
-			return fmt.Errorf("%s has an invalid value: maximum allowed is %v, got %v",
-				name, max, ival)
+			return fmt.Errorf("%v is an invalid %s value: maximum allowed is %v",
+				ival, name, max)
 		}
 		return nil
 	}
@@ -167,11 +167,11 @@ func validateIntMinimum(min int) Validation {
 			return nil
 		}
 		if ival, ok := val.(int); !ok {
-			return fmt.Errorf("%s has an invalid type, got '%v', need integer",
+			return fmt.Errorf("type of %s is invalid, got '%v', need integer",
 				name, val)
 		} else if ival < min {
-			return fmt.Errorf("%s has an invalid value: minimum allowed is %v, got %v",
-				name, min, ival)
+			return fmt.Errorf("%v is an invalid %s value: minimum allowed is %v",
+				ival, name, min)
 		}
 		return nil
 	}
@@ -186,20 +186,20 @@ func validateMinLength(min int) Validation {
 		}
 		if sval, ok := val.(string); ok {
 			if len(sval) < min {
-				return fmt.Errorf("%s has an invalid value: minimum length is %v, got '%s' (%d characters)",
-					name, min, sval, len(sval))
+				return fmt.Errorf("%v (%d characters) is an invalid %s value: minimum allowed length is %v",
+					sval, len(sval), name, min)
 			}
 		} else {
 			k := reflect.TypeOf(val).Kind()
 			if k == reflect.Slice || k == reflect.Array {
 				v := reflect.ValueOf(val)
 				if v.Len() < min {
-					return fmt.Errorf("%s has an invalid value: minimum length is %v but actual length is %d, got %v",
-						name, min, v.Len(), v)
+					return fmt.Errorf("%v (%d items) is an invalid %s value: minimum allowed length is %v",
+						v.Interface(), v.Len(), name, min)
 				}
 			} else {
-				return fmt.Errorf("%s has an invalid type, got '%v', need string or array",
-					name, val)
+				return fmt.Errorf("'%v' is an invalid %s value, need string or array",
+					val, name)
 			}
 		}
 		return nil
@@ -215,20 +215,20 @@ func validateMaxLength(max int) Validation {
 		}
 		if sval, ok := val.(string); ok {
 			if len(sval) > max {
-				return fmt.Errorf("%s has an invalid value: maximum length is %v, got '%s' (%d characters)",
-					name, max, sval, len(sval))
+				return fmt.Errorf("%v (%d characters) is an invalid %s value: maximum allowed length is %v",
+					sval, len(sval), name, max)
 			}
 		} else {
 			k := reflect.TypeOf(val).Kind()
 			if k == reflect.Slice || k == reflect.Array {
 				v := reflect.ValueOf(val)
 				if v.Len() > max {
-					return fmt.Errorf("%s has an invalid value: maximum length is %v but actual length is %d, got %v",
-						name, max, v.Len(), v)
+					return fmt.Errorf("%v (%d items) is an invalid %s value: maximum allowed length is %v",
+						v.Interface(), v.Len(), name, max)
 				}
 			} else {
-				return fmt.Errorf("%s has an invalid type, got '%v', need string or array",
-					name, val)
+				return fmt.Errorf("'%v' is an invalid %s value, need string or array",
+					val, name)
 			}
 		}
 		return nil
@@ -251,8 +251,8 @@ func validateEnum(valid []interface{}) Validation {
 			for i, v := range valid {
 				sValid[i] = fmt.Sprintf("%v", v)
 			}
-			return fmt.Errorf("%s has an invalid value: allowed values are %s, got %v",
-				name, strings.Join(sValid, ", "), val)
+			return fmt.Errorf("\"%v\" is an invalid %s value: allowed values are %s",
+				val, name, strings.Join(sValid, ", "))
 		}
 		return nil
 	}

@@ -9,7 +9,6 @@ type Db map[int]*TaskModel
 type TaskModel struct {
 	Id        int
 	Details   string
-	CreatedAt time.Time
 	ExpiresAt time.Time
 }
 
@@ -17,11 +16,11 @@ type TaskModel struct {
 var now = time.Now()
 var expiresAt = now.Add(1 * time.Hour)
 var db = Db{
-	1: &TaskModel{Id: 1, Details: "Hello world!", CreatedAt: now, ExpiresAt: expiresAt},
-	2: &TaskModel{Id: 2, Details: "Привет мир!", CreatedAt: now, ExpiresAt: expiresAt},
-	3: &TaskModel{Id: 3, Details: "Bonjour monde!", CreatedAt: now, ExpiresAt: expiresAt},
-	4: &TaskModel{Id: 4, Details: "你好世界!", CreatedAt: now, ExpiresAt: expiresAt},
-	5: &TaskModel{Id: 5, Details: "こんにちは世界！", CreatedAt: now, ExpiresAt: expiresAt},
+	1: &TaskModel{Id: 1, Details: "Hello world!", ExpiresAt: expiresAt},
+	2: &TaskModel{Id: 2, Details: "Привет мир!", ExpiresAt: expiresAt},
+	3: &TaskModel{Id: 3, Details: "Bonjour monde!", ExpiresAt: expiresAt},
+	4: &TaskModel{Id: 4, Details: "你好世界!", ExpiresAt: expiresAt},
+	5: &TaskModel{Id: 5, Details: "こんにちは世界！", ExpiresAt: expiresAt},
 }
 
 // Load all tasks

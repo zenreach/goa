@@ -1,21 +1,35 @@
 #!/bin/bash -e
 
 # List tasks
-curl -X GET http://localhost:8081/tasks
+echo GET /tasks
+echo ----------
+curl -i -X GET http://localhost:8081/tasks
+echo
 echo
 
 # Show one task
-curl -X GET http://localhost:8081/tasks/1
+echo GET /tasks/1
+echo ------------
+curl -i -X GET http://localhost:8081/tasks/1
+echo
 echo
 
 # Create a task
-curl -X POST http://localhost:8081/tasks -H Content-Type:application/json -d "{}"
+echo POST /tasks
+echo -----------
+curl -i -X POST http://localhost:8081/tasks -H Content-Type:application/json \
+	-d '{"Owner":{"Name":"Joe"},"Details":"a task","ExpiresAt":"2015-03-26T15:02:01-07:00"}'
+echo
 echo
 
 # Update a task
-curl -X PUT http://localhost:8081/tasks/1 -H Content-Type:application/json -d "{}"
-echo
+echo PUT /tasks/1
+echo ------------
+curl -i -X PUT http://localhost:8081/tasks/1 -H Content-Type:application/json \
+	-d '{"Details":"a task","ExpiresAt":"2015-03-26T15:02:01-07:00"}'
 
 # Delete a task
-curl -X DELETE http://localhost:8081/tasks/1
+echo DELETE /tasks/2
+echo ---------------
+curl -i -X DELETE http://localhost:8081/tasks/2
 echo

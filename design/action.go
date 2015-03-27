@@ -19,7 +19,7 @@ type Action struct {
 	Responses   []*Response  // Set of possible response definitions
 	PathParams  ActionParams // Path parameters if any
 	QueryParams ActionParams // Query string parameters if any
-	Payload     Object       // Payload blueprint (request body) if any
+	Payload     *Member      // Payload blueprint (request body) if any
 }
 
 // Get initializes the action HTTP method to GET and sets the path with the
@@ -80,7 +80,7 @@ func (a *Action) WithParam(name string) *ActionParam {
 // WithPayload sets the request payload type.
 // Note: Object members may be nil in which case the definition for the member with the same name
 // in the resource media type is used to load and validate request bodies.
-func (a *Action) WithPayload(payload Object) *Action {
+func (a *Action) WithPayload(payload *Member) *Action {
 	a.Payload = payload
 	return a
 }
