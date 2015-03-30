@@ -29,10 +29,9 @@ const (
 // Data types are used to define the type of media type members and of action
 // parameters.
 type DataType interface {
-	Kind() Kind                               // integer, number, string, ...
-	Name() string                             // Human readable name
-	Load(interface{}) (interface{}, error)    // Validate and load
-	CanLoad(t reflect.Type, ctx string) error // nil if values of given type can be loaded into fields described by attribute, descriptive error otherwise
+	Kind() Kind                            // integer, number, string, ...
+	Name() string                          // Human readable name
+	Load(interface{}) (interface{}, error) // Validate and load
 }
 
 // Type for null, boolean, integer, number and string
@@ -181,34 +180,6 @@ func (b Primitive) Load(value interface{}) (interface{}, error) {
 	return nil, &IncompatibleValue{value: value, to: b.Name(), extra: extra}
 }
 
-// CanLoad checks whether values of the given go type can be loaded into values of this basic goa type.
-// Returns nil if check is successful, error otherwise.
-func (b Primitive) CanLoad(t reflect.Type, context string) error {
-	switch Kind(b) {
-	case BooleanType:
-		switch t.Kind() {
-		case reflect.Bool, reflect.Int, reflect.Uint, reflect.Int8, reflect.Uint8, reflect.Int16, reflect.Uint16,
-			reflect.Int32, reflect.Uint32, reflect.Int64, reflect.Uint64, reflect.String:
-			return nil
-		}
-	case IntegerType:
-		switch t.Kind() {
-		case reflect.Int, reflect.Uint, reflect.Int8, reflect.Uint8, reflect.Int16, reflect.Uint16, reflect.Int32,
-			reflect.Uint32, reflect.Int64, reflect.Uint64:
-			return nil
-		}
-	case NumberType:
-		if t.Kind() == reflect.Float32 || t.Kind() == reflect.Float64 {
-			return nil
-		}
-	case StringType:
-		if t.Kind() == reflect.String {
-			return nil
-		}
-	}
-	return &IncompatibleType{context: context, to: t}
-}
-
 // An array of values of type ElemType
 type Array struct {
 	ElemType DataType
@@ -251,15 +222,6 @@ func (a *Array) Load(value interface{}) (interface{}, error) {
 		res = append(res, ev)
 	}
 	return interface{}(res), nil
-}
-
-// CanLoad checks whether values of the given go type can be loaded into values of this array.
-// Returns nil if check is successful, error otherwise.
-func (a *Array) CanLoad(t reflect.Type, context string) error {
-	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {
-		return &IncompatibleType{context: context, to: t, extra: "value must be an array or a slice"}
-	}
-	return a.ElemType.CanLoad(t.Elem(), fmt.Sprintf("%v items", context))
 }
 
 // JSON schema type name
@@ -332,31 +294,6 @@ func (o Object) Load(value interface{}) (interface{}, error) {
 	return coerced, nil
 }
 
-// CanLoad checks whether values of the given go type can be loaded into values of object.
-// Returns nil if check is successful, error otherwise.
-func (o Object) CanLoad(t reflect.Type, context string) error {
-	if t.Kind() != reflect.Struct {
-		return &IncompatibleType{context: context, to: t, extra: "value must be a struct"}
-	}
-	for i := 0; i < t.NumField(); i++ {
-		f := t.FieldByIndex([]int{i})
-		name := f.Tag.Get("member")
-		if len(name) == 0 {
-			name = f.Name
-		}
-		member, ok := o[name]
-		newContext := fmt.Sprintf("%s.%v", context, f.Name)
-		if !ok {
-			return &IncompatibleType{context: newContext, to: t, extra: "No member with name " + f.Name}
-		} else {
-			if err := member.Type.CanLoad(f.Type, newContext); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // JSON schema type name
 func (a Object) Name() string {
 	return "object"
@@ -417,25 +354,4 @@ func (e *IncompatibleValue) Error() string {
 		extra = ": " + e.extra
 	}
 	return fmt.Sprintf("Cannot load value %v into a %v%s", e.value, e.to, extra)
-}
-
-// Error raised when a values of given go type cannot be assigned to member's type (by `CanLoad()`)
-type IncompatibleType struct {
-	context string
-	to      reflect.Type
-	extra   string // Extra error information if any
-}
-
-// Error returns the error message
-func (e *IncompatibleType) Error() string {
-	extra := ""
-	if len(e.extra) > 0 {
-		extra = ": " + e.extra
-	}
-	prefix := ""
-	if len(e.context) > 0 {
-		prefix = e.context + " "
-	}
-	return fmt.Sprintf(prefix+"cannot be assigned values of type %v%s",
-		e.to, extra)
 }

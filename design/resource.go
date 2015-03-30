@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 
 	"bitbucket.org/pkg/inflect"
@@ -12,6 +13,9 @@ import (
 // All known resources.
 // goa keeps track of resources created via NewResource for code generation.
 var Resources map[string]*Resource
+
+// Resource names ordered alphabetically
+var ResourceNames []string
 
 // A REST resource
 // Defines a media type and a set of actions that can be executed through HTTP requests.
@@ -41,6 +45,8 @@ func NewResource(name, path, desc string, mtype *MediaType) *Resource {
 		MediaType:   mtype,
 		Actions:     make(map[string]*Action),
 	}
+	ResourceNames = append(ResourceNames, name)
+	sort.Strings(ResourceNames)
 	Resources[name] = &r
 	return &r
 }

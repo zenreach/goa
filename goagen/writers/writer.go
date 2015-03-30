@@ -2,16 +2,12 @@ package writers
 
 // Code generation writer interface
 type Writer interface {
-	// Write content to given output directory
-	Write(outputDir string) (*Report, error)
-	// Human friendly title
-	Title() string
-}
-
-// Generation report
-type Report struct {
-	// Name of generated files
-	Generated []string
-	// Warnings if any
-	Warnings []string
+	// FunctionName gives the name of the function that generates the artefact (code,
+	// documentation, client etc.) for a given resource.
+	// The function signature must be:
+	//     func (resource *design.Resource) error
+	FunctionName() string
+	// Source of function that generates the artefact and supporting code if any.
+	// This source is written inline in the generator main go source file.
+	Source() string
 }

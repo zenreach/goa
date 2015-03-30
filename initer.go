@@ -71,7 +71,7 @@ func setFieldValue(field, value reflect.Value, fieldName string) error {
 	case reflect.String:
 		if _, ok := field.Interface().(time.Time); ok {
 			// Make a special case for time.Time struct fields as this is a common
-			// occurrence.
+			// occurrence not supported natively by JSON.
 			t, err := time.Parse(time.RFC3339, value.Interface().(string))
 			if err != nil {
 				return fmt.Errorf("field '%s': invalid time value %v",

@@ -1,80 +1,40 @@
 package writers
 
 import (
+	"bytes"
 	"fmt"
-	"os"
-	"os/exec"
-	"path"
-	"sort"
-	"strings"
 	"text/template"
-
-	"github.com/raphael/goa/design"
 )
 
+// Middleware writer.
+type middlewareWriter struct {
+	designPkg string
+	tmpl      *template.Template
+}
+
 // Create middleware writer.
-func NewMiddlewareWriter(pkg, target string)
-	funcMap := template.FuncMap{"joinNames": joinNames, "literal": literal}
-	tmpl, _ := template.New("goagen").Funcs(funcMap).Parse(handlerTmpl)
+func NewMiddlewareWriter(pkg string) (Writer, error) {
+	tmpl, err := template.New("middleware-gen").Parse(middlewareGenTmpl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create template, %s", err)
+		return nil, fmt.Errorf("failed to create middleware-gen template, %s", err)
 	}
-	return &bootstrapper{codegenFile: codegenFile, tmpl: tmpl}, nil
+	return &middlewareWriter{designPkg: pkg, tmpl: tmpl}, nil
 }
 
-// Bootstrap checks whether the --bootstrap command line flag is present and if
-// so generate the handlers code and recompiles the app.
-func (b *bootstrapper) process(c *controller) error {
-	f, err := os.OpenFile(b.codegenFile, os.O_APPEND|os.O_WRONLY, 0666)
+func (w *middlewareWriter) Source() (string, error) {
+	var buf bytes.Buffer
+	err := w.tmpl.Execute(&buf, w)
 	if err != nil {
-		return fmt.Errorf("failed to open output file, %s", err)
+		return "", err
 	}
-	r := c.resource
-	for _, a := range r.Actions {
-		data := actionData{resourceName: r.Name, payloadType: a.Payload.Type.Name, action: a}
-		err = b.tmpl.Execute(f, &data)
-		if err != nil {
-			return fmt.Errorf("failed to generate code, %s", err)
-		}
-	}
-	f.Close()
-	o, err := exec.Command("go", "fmt", b.codegenFile).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to format generated code, %s", o)
-	}
-	return nil
+	return buf.String(), nil
 }
 
-// Cleanup any generated file.
-func (b *bootstrapper) cleanup() {
-	if b.codegenFile != "" {
-		os.Remove(b.codegenFile)
-	}
+func (w *middlewareWriter) FunctionName() string {
+	return fmt.Sprintf("gen%sMiddleware", w.designPkg)
 }
 
-// Data structure used by template
-type actionData struct {
-	resourceName string
-	payloadType  string // go type of payload
-	action       *design.Action
-}
-
-func (d *actionData) FuncName() string {
-	return d.action.Name + d.controller.resource.Name
-}
-
-func (d *actionData) PathParams() design.ActionParams {
-	return d.action.PathParams
-}
-
-func (d *actionData) QueryParams() design.ActionParams {
-	return d.action.QueryParams
-}
-
-func (d *actionData) Payload() design.Object {
-	return d.action.Payload
-}
-
+const middlewareGenTmpl = `
 func joinNames(params design.ActionParams) string {
 	var names = make([]string, len(params))
 	var idx = 0
@@ -91,7 +51,23 @@ func literal(val interface{}) string {
 	return fmt.Sprintf("%#v", val)
 }
 
-const handlerTmpl = `
+var resTmpl *template.Template
+
+func {{.FunctionName}}(resource *design.Resource) error {
+	if resTmpl == nil {
+		funcMap := template.FuncMap{"joinNames": joinNames, "literal": literal}
+		resTmpl, err := template.New("middleware").Funcs(funcMap).Parse(middlewareTmpl)
+		if err != nil {
+			return fmt.Errorf("failed to create middleware template, %s", err)
+		}
+	}
+	if err := tmpl.Execute(resource, w); err != nil {
+		return fmt.Errorf("failed to generate %s middleware: %s", name, err)
+	}
+}
+`
+
+const middlewareTmpl = `
 func {{.FuncName}}(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	h := goa.NewHandler("{{.resourceName}}", w, r){{range $name, $param := .action.PathParams}}
 	{{$name}}, err := {{$param.TypeName}}.Load(params.ByName("{{$name}}"))
