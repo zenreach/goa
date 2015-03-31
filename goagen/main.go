@@ -66,7 +66,7 @@ func setupFiles() error {
 		if err != nil {
 			return fmt.Errorf("can't load design package files: %s", err)
 		}
-		rel := strings.TrimPrefix(inputDir, abs)
+		rel := strings.TrimPrefix(abs, inputDir)
 		dest := path.Join(buildDir, rel)
 		if info.IsDir() {
 			os.MkdirAll(dest, 0755)
@@ -89,28 +89,28 @@ func writeGenerator() error {
 	var ws []writers.Writer
 	all := !*middleware && !*handlers && !*docs && *cli != ""
 	if *middleware || all {
-		if w, err := writers.NewMiddlewareWriter(*designPkg); err != nil {
+		if w, err := writers.NewMiddlewareGenWriter(); err != nil {
 			return err
 		} else {
 			ws = append(ws, w)
 		}
 	}
 	if *handlers || all {
-		if w, err := writers.NewHandlersWriter(*designPkg); err != nil {
+		if w, err := writers.NewHandlersGenWriter(*designPkg); err != nil {
 			return err
 		} else {
 			ws = append(ws, w)
 		}
 	}
 	if *docs || all {
-		if w, err := writers.NewDocsWriter(*designPkg); err != nil {
+		if w, err := writers.NewDocsGenWriter(*designPkg); err != nil {
 			return err
 		} else {
 			ws = append(ws, w)
 		}
 	}
 	if *cli != "" || all {
-		if w, err := writers.NewCliWriter(*designPkg); err != nil {
+		if w, err := writers.NewCliGenWriter(*designPkg); err != nil {
 			return err
 		} else {
 			ws = append(ws, w)
@@ -172,17 +172,33 @@ const goagenTmpl = `
 import (
 	"os"
 )
- {{$pkg := .pkg}}
+{{$pkg := .pkg}}
 func main() {
 	for _, n := range {{$pkg}}.ResourNames {
 		res := {{$pkg}}.Resources[n]{{range .writers}}
 		err := {{.FunctionName}}(res)
 		if err != nil {
-			fmt.Sprintf(os.Stderr, "%s\n", err)
+			fmt.Fprintf(os.Stderr, "%s\n", err)
 			os.Exit(1)
 		} {{end}}
 	}
 }
+
+func joinNames(params design.ActionParams) string {
+	var names = make([]string, len(params))
+	var idx = 0
+	for n, _ := range params {
+		names[idx] = n
+		idx += 1
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
+}
+
+func literal(val interface{}) string {
+	return fmt.Sprintf("%#v", val)
+}
+
 {{range .writers}}
 {{.Source}}
 {{end}}

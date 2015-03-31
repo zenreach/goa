@@ -6,23 +6,26 @@ import (
 )
 
 // Doc writer.
-type cliWriter struct {
+type cliGenWriter struct {
 	designPkg string
 	tmpl      *template.Template
 }
 
 // Create middleware writer.
-func NewCliWriter(pkg string) (Writer, error) {
-	funcMap := template.FuncMap{"joinNames": joinNames, "literal": literal}
-	tmpl, err := template.New("cli-gen").Funcs(funcMap).Parse(cliTmpl)
+func NewCliGenWriter(pkg string) (Writer, error) {
+	tmpl, err := template.New("cli-gen").Parse(cliGenTmpl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create template, %s", err)
 	}
-	return &cliWriter{designPkg: pkg, tmpl: tmpl}, nil
+	return &cliGenWriter{designPkg: pkg, tmpl: tmpl}, nil
 }
 
-func (w *cliWriter) Source() (*GeneratorSource, error) {
-	return &GeneratorSource{}, nil
+func (w *cliGenWriter) FunctionName() string {
+	return ""
 }
 
-const cliTmpl = ``
+func (w *cliGenWriter) Source() string {
+	return ""
+}
+
+const cliGenTmpl = ``
