@@ -72,7 +72,8 @@ func (a *Action) Delete(path string) *Action {
 // If the resource media type does not define a member with the param name then the type must be
 // set explicitly (with e.g. 'WithParam("foo").Integer()').
 func (a *Action) WithParam(name string) *ActionParam {
-	param := &ActionParam{Name: name}
+	m := Member{Type: String}
+	param := &ActionParam{Name: name, Member: &m}
 	a.QueryParams[name] = param
 	return param
 }
@@ -111,7 +112,8 @@ func (a *Action) method(method, path string) *Action {
 	var matches = pathRegex.FindAllStringSubmatch(path, -1)
 	a.PathParams = make(map[string]*ActionParam, len(matches))
 	for _, m := range matches {
-		a.PathParams[m[1]] = &ActionParam{Name: m[1]}
+		mem := Member{Type: String}
+		a.PathParams[m[1]] = &ActionParam{Name: m[1], Member: &mem}
 	}
 	return a
 }
@@ -122,8 +124,12 @@ func (a *Action) validate() error {
 	if a.Name == "" {
 		return fmt.Errorf("Action name cannot be empty")
 	}
-	if len(a.Responses) == 0 {
-		return fmt.Errorf("Action %s has no response defined")
+	for i, r := range a.Responses {
+		for j, r2 := range a.Responses {
+			if i != j && r.Status == r2.Status {
+				return fmt.Errorf("Multiple response definitions with status code %d", r.Status)
+			}
+		}
 	}
 	for _, p := range a.PathParams {
 		for _, q := range a.QueryParams {
@@ -131,6 +137,34 @@ func (a *Action) validate() error {
 				return fmt.Errorf("Action has both path parameter and query parameter named %s",
 					p.Name)
 			}
+		}
+	}
+	if err := a.validateParams(true); err != nil {
+		return err
+	}
+	if err := a.validateParams(false); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Validate action parameters (make sure they have names, members and types)
+func (a *Action) validateParams(isPath bool) error {
+	var params ActionParams
+	if isPath {
+		params = a.PathParams
+	} else {
+		params = a.QueryParams
+	}
+	for n, p := range params {
+		if n == "" {
+			return fmt.Errorf("%s has parameter with no name", a.Name)
+		} else if p.Member == nil {
+			return fmt.Errorf("Member field of %s parameter :%s cannot be nil",
+				a.Name, n)
+		} else if p.Member.Type == nil {
+			return fmt.Errorf("type of %s parameter :%s cannot be nil",
+				a.Name, n)
 		}
 	}
 	return nil

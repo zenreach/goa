@@ -1,14 +1,17 @@
 package writers
 
 import (
+	"bytes"
 	"fmt"
 	"text/template"
+
+	"github.com/alecthomas/kingpin"
 )
 
 // Handlers writer.
 // Helps bootstrap a new app.
 type handlersGenWriter struct {
-	designPkg     string
+	DesignPkg     string
 	headerGenTmpl *template.Template
 	resourceTmpl  *template.Template
 }
@@ -26,27 +29,25 @@ func NewHandlersGenWriter(designPkg string) (Writer, error) {
 		return nil, fmt.Errorf("failed to create template, %s", err)
 	}
 	return &handlersGenWriter{
-		designPkg:     designPkg,
+		DesignPkg:     designPkg,
 		headerGenTmpl: headerT,
 		resourceTmpl:  resourceT,
 	}, nil
 }
 
 func (w *handlersGenWriter) FunctionName() string {
-	return ""
+	return "genHandlers"
 }
 
 func (w *handlersGenWriter) Source() string {
-	return ""
+	var buf bytes.Buffer
+	kingpin.FatalIfError(w.headerGenTmpl.Execute(&buf, w), "handlers-gen template")
+	return buf.String()
 }
 
 var headerGenTmpl = `
-package {{.designPkg}}
-
-import (
-	"github.com/raphael/goa"
-)
-
-`
+func {{.FunctionName}}(resource *design.Resource, output string) error {
+	return nil
+}`
 
 var resourceTmpl = ``

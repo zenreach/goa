@@ -1,8 +1,11 @@
 package writers
 
 import (
+	"bytes"
 	"fmt"
 	"text/template"
+
+	"github.com/alecthomas/kingpin"
 )
 
 // Doc writer.
@@ -21,11 +24,16 @@ func NewDocsGenWriter(pkg string) (Writer, error) {
 }
 
 func (w *docsGenWriter) FunctionName() string {
-	return ""
+	return "genDocs"
 }
 
 func (w *docsGenWriter) Source() string {
-	return ""
+	var buf bytes.Buffer
+	kingpin.FatalIfError(w.tmpl.Execute(&buf, w), "docs-gen template")
+	return buf.String()
 }
 
-const docsGenTmpl = ``
+const docsGenTmpl = `
+func {{.FunctionName}}(resource *design.Resource, output string) error {
+	return nil
+}`

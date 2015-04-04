@@ -40,6 +40,7 @@ func ShowTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) 
 	id, err := design.Integer.Load(params.ByName("id"))
 	if err != nil {
 		goa.RespondBadRequest(w, "invalid param 'id': %s", err)
+		return
 	}
 	view, err := design.String.Load(params.ByName("view"))
 	if err != nil {

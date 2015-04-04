@@ -1,10 +1,6 @@
-package design
+package resources
 
-import (
-	"regexp"
-
-	. "github.com/raphael/goa/design"
-)
+import . "github.com/raphael/goa/design"
 
 var (
 	// Task resource
@@ -47,8 +43,7 @@ func Init() {
 	show.WithParam("view")
 	show.Respond(TaskNotFoundMediaType).WithStatus(404)
 
-	var create = TaskResource.Create("").WithPayload(TaskPayload)
-	create.RespondNoContent().WithLocation(regexp.MustCompile(`/tasks/[0-9]+$`))
+	TaskResource.Create("").WithPayload(TaskPayload)
 
 	var update = TaskResource.Update(":id").WithPayload(TaskPayload)
 	update.Respond(TaskNotFoundMediaType).WithStatus(404)

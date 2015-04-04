@@ -57,7 +57,11 @@ func (r *Resource) Action(name string) *Action {
 	if action, ok := r.Actions[name]; ok {
 		return action
 	}
-	a := Action{Name: name, PathParams: make(ActionParams), QueryParams: make(ActionParams)}
+	a := Action{
+		Name:        name,
+		PathParams:  make(ActionParams),
+		QueryParams: make(ActionParams),
+	}
 	r.Actions[name] = &a
 	return &a
 }

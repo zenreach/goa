@@ -27,12 +27,12 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/raphael/goa"
-	"github.com/raphael/goa/examples/todo/design"
+	"github.com/raphael/goa/examples/todo/resources"
 )
 
 func main() {
 	// Initialize resources
-	design.Init()
+	resources.Init()
 
 	// Define application
 	app := goa.New("Tasks And Reminder", "Create simple tasks")
