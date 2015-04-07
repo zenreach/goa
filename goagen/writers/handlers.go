@@ -22,8 +22,7 @@ func NewHandlersGenWriter(designPkg string) (Writer, error) {
 		"comment":     comment,
 		"commandLine": commandLine,
 	}
-	t := header(fmt.Sprintf("%s handlers", designPkg)) + headerGenTmpl
-	headerT, err := template.New("handlers").Funcs(funcMap).Parse(t)
+	headerT, err := template.New("handlers").Funcs(funcMap).Parse(headerGenTmpl)
 	resourceT, err := template.New("handlers-resource").Funcs(funcMap).Parse(resourceTmpl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create template, %s", err)
