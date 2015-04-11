@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/alecthomas/kingpin"
+	"gopkg.in/alecthomas/kingpin.v1"
 )
 
 // Doc writer.

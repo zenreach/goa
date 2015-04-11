@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/alecthomas/kingpin"
+	"gopkg.in/alecthomas/kingpin.v1"
 )
 
 // Middleware writer.
@@ -21,7 +21,11 @@ func NewMiddlewareGenWriter() (Writer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create middleware-gen template, %s", err)
 	}
-	return &middlewareGenWriter{genTmpl: genTmpl, MiddlewareTmpl: middlewareTmpl, RouterTmpl: routerTmpl}, nil
+	return &middlewareGenWriter{
+		genTmpl: genTmpl,
+		MiddlewareTmpl: middlewareTmpl,
+		RouterTmpl: routerTmpl,
+	}, nil
 }
 
 func (w *middlewareGenWriter) Source() string {
