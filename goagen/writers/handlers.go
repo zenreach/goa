@@ -3,6 +3,7 @@ package writers
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/raphael/goa/design"
@@ -13,10 +14,10 @@ import (
 // Handlers writer.
 // Helps bootstrap a new app.
 type handlersGenWriter struct {
-	DesignPkg      string
-	handlerGenTmpl *template.Template
-	interfaceTmpl  string
-	dataTypesTmpl  string
+	DesignPkg     string
+	genTmpl       *template.Template
+	InterfaceTmpl string
+	DataTypesTmpl string
 }
 
 // NewHandlerWriter returns a writer that produces skeleton code
@@ -30,10 +31,10 @@ func NewHandlersGenWriter(designPkg string) (Writer, error) {
 		return nil, fmt.Errorf("failed to create handlers template, %s", err)
 	}
 	return &handlersGenWriter{
-		DesignPkg:      designPkg,
-		handlerGenTmpl: headerT,
-		interfaceTmpl:  interfaceTmpl,
-		dataTypesTmpl:  dataTypesTmpl,
+		DesignPkg:     designPkg,
+		genTmpl:       headerT,
+		InterfaceTmpl: interfaceTmpl,
+		DataTypesTmpl: dataTypesTmpl,
 	}, nil
 }
 
@@ -43,7 +44,7 @@ func (w *handlersGenWriter) FunctionName() string {
 
 func (w *handlersGenWriter) Source() string {
 	var buf bytes.Buffer
-	kingpin.FatalIfError(w.handlerGenTmpl.Execute(&buf, w), "handlers-gen template")
+	kingpin.FatalIfError(w.genTmpl.Execute(&buf, w), "handlers-gen template")
 	return buf.String()
 }
 
@@ -82,23 +83,73 @@ func {{.FunctionName}}(resource *design.Resource, output string) error {
 }
 
 const HandlerInterfaceTmpl = ` + "`" + `
-{{.RouterTmpl}}
+{{.InterfaceTmpl}}
 ` + "`" + `
 
 const HandlerDataTypesTmpl = ` + "`" + `
-{{.MiddlewareTmpl}}
+{{.DataTypesTmpl}}
 ` + "`" + `
 `
 
-// Generate parameters signature for given action
-func parameters(a *design.Action) string {
-
-}
-
 var interfaceTmpl = `
-// {{.Name}} handler interface
-type {{.Name}}Handler interface {{{range .Actions}}
-	{{capitalize .Name}}({{parameters .}}) *goa.Response{{end}}
+// {{.Name}} handler interface{{$resource := .}}
+type {{.Name}}Handler interface { {{range .Actions}}
+	{{capitalize .Name}}({{parameters $resource .}}) *goa.Response{{end}}
 }`
 
-var dataTypesTmpl = ``
+var dataTypesTmpl = `{{range .Actions}}{{$type := payloadType .Payload}}{{if $type}}
+
+
+type {{.Name}}Payload struct {
+}`
+
+// Compute payload type of given payload.
+// Return array element type if payload is an array,
+func payloadType(payload *design.Member) design.Object {
+	elemType := payload.Type
+	for elemType.Kind() == design.ArrayType {
+		elemType = elemType.(*design.Array).ElemType
+	}
+	o, ok := elemType.(design.Object)
+	if ok {
+		return o
+	}
+	return nil
+}
+
+// Go parameters for action method
+func parameters(r *design.Resource, a *design.Action) string {
+	var params []string
+	if a.Payload != nil {
+		params = append(params, fmt.Sprintf("payload %s", signature(r, a, "Payload", a.Payload.Type)))
+	}
+	for _, n := range a.PathParamNames() {
+		p := a.PathParams[n]
+		params = append(params, fmt.Sprintf("%s %s", n, signature(r, a, p.Name, p.Member.Type)))
+	}
+	for _, n := range a.QueryParamNames() {
+		p := a.PathParams[n]
+		params = append(params, fmt.Sprintf("%s %s", n, signature(r, a, p.Name, p.Member.Type)))
+	}
+	return strings.Join(params, ", ")
+}
+
+func signature(r *design.Resource, a *design.Action, suffix string, t design.DataType) string {
+	switch t.Kind() {
+	case design.BooleanType:
+		return "bool"
+	case design.IntegerType:
+		return "int"
+	case design.NumberType:
+		return "float64"
+	case design.StringType:
+		return "string"
+	case design.ArrayType:
+		ar := t.(*design.Array)
+		return "[]" + signature(r, a, suffix, ar.ElemType)
+	case design.ObjectType:
+		return fmt.Sprintf("*%s%s%s", r.Name, a.Name, suffix)
+	}
+	kingpin.Fatalf("Unknown or invalid type '%v'", t.Kind())
+	return "" // Not reached
+}

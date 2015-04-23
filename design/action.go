@@ -3,6 +3,7 @@ package design
 import (
 	"fmt"
 	"regexp"
+	"sort"
 )
 
 // A resource action
@@ -100,6 +101,28 @@ func (a *Action) RespondNoContent() *Response {
 	r := Response{Status: 204}
 	a.Responses = append(a.Responses, &r)
 	return &r
+}
+
+// Query parameter names sorted alphavetically
+func (a *Action) QueryParamNames() []string {
+	return sortedKeys(a.QueryParams)
+}
+
+// Path parameter names sorted alphavetically
+func (a *Action) PathParamNames() []string {
+	return sortedKeys(a.PathParams)
+}
+
+// Sort map keys alphabetically
+func sortedKeys(params ActionParams) []string {
+	names := make([]string, len(params))
+	i := 0
+	for n, _ := range params {
+		names[i] = n
+		i += 1
+	}
+	sort.Strings(names)
+	return names
 }
 
 // Regular expression used to capture path parameters
