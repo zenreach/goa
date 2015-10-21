@@ -14,6 +14,7 @@ type (
 		Schema string `json:"$schema,omitempty"`
 		// Core schema
 		ID           string                 `json:"id,omitempty"`
+		Title        string                 `json:"title,omitempty"`
 		Type         JSONType               `json:"type,omitempty"`
 		Item         *JSONSchema            `json:"item,omitempty"`
 		Properties   map[string]*JSONSchema `json:"properties,omitempty"`
@@ -22,7 +23,6 @@ type (
 		DefaultValue interface{}            `json:"defaultValue,omitempty"`
 
 		// Hyper schema
-		Title     string      `json:"title,omitempty"`
 		Media     *JSONMedia  `json:"media,omitempty"`
 		ReadOnly  bool        `json:"readOnly,omitempty"`
 		PathStart string      `json:"pathStart,omitempty"`
@@ -56,6 +56,7 @@ type (
 	// JSONLink represents a "link" field in a JSON hyper schema.
 	JSONLink struct {
 		Title        string      `json:"title,omitempty"`
+		Description  string      `json:"description,omitempty"`
 		Rel          string      `json:"rel,omitempty"`
 		Href         string      `json:"href,omitempty"`
 		Method       string      `json:"method,omitempty"`
@@ -154,6 +155,7 @@ func GenerateResourceDefinition(api *design.APIDefinition, r *design.ResourceDef
 	s := NewJSONSchema()
 	s.Description = r.Description
 	s.Type = JSONObject
+	s.Title = r.Name
 	definitions[r.FormatName(true, false)] = s
 	if mt, ok := api.MediaTypes[r.MediaType]; ok {
 		buildMediaTypeSchema(api, mt, s)
@@ -195,8 +197,8 @@ func GenerateResourceDefinition(api *design.APIDefinition, r *design.ResourceDef
 		}
 		for i, r := range a.Routes {
 			link := JSONLink{
-				Title:        a.Description,
-				Rel:          a.Name,
+				Title:        a.Name,
+				Rel:          a.FormatName(true),
 				Href:         toSchemaHref(api, r),
 				Method:       r.Verb,
 				Schema:       requestSchema,
@@ -233,6 +235,7 @@ func GenerateMediaTypeDefinition(api *design.APIDefinition, mt *design.MediaType
 		return
 	}
 	s := NewJSONSchema()
+	s.Title = mt.TypeName
 	definitions[mt.FormatName(true, false)] = s
 	buildMediaTypeSchema(api, mt, s)
 }
@@ -243,6 +246,7 @@ func GenerateTypeDefinition(api *design.APIDefinition, ut *design.UserTypeDefini
 		return
 	}
 	s := NewJSONSchema()
+	s.Title = ut.TypeName
 	definitions[ut.FormatName(true, false)] = s
 	buildAttributeSchema(api, s, ut.AttributeDefinition)
 }
@@ -282,6 +286,9 @@ func (s *JSONSchema) Merge(other *JSONSchema) {
 	}
 	if s.Type == "" {
 		s.Type = other.Type
+	}
+	if s.Ref == "" {
+		s.Ref = other.Ref
 	}
 	for n, p := range other.Properties {
 		if _, ok := s.Properties[n]; !ok {
@@ -448,8 +455,9 @@ func buildMediaTypeSchema(api *design.APIDefinition, mt *design.MediaTypeDefinit
 			href = toSchemaHref(api, r.CanonicalAction().Routes[0])
 		}
 		s.Links = append(s.Links, &JSONLink{
-			Title:        att.Description,
+			Title:        l.Name,
 			Rel:          l.Name,
+			Description:  att.Description,
 			Href:         href,
 			Method:       "GET",
 			TargetSchema: TypeSchema(api, l.MediaType()),
