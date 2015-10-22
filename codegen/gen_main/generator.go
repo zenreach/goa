@@ -167,11 +167,17 @@ func okResp(a *design.ActionDefinition) map[string]interface{} {
 	if mt, ok2 = design.Design.MediaTypes[ok.MediaType]; !ok2 {
 		return nil
 	}
+	typeref := codegen.GoTypeRef(mt, 1)
+	if strings.HasPrefix(typeref, "*") {
+		typeref = "&app." + typeref[1:]
+	} else {
+		typeref = "app." + typeref
+	}
 	return map[string]interface{}{
 		"Name":             ok.Name,
 		"HasMultipleViews": len(mt.Views) > 1,
 		"GoType":           codegen.GoNativeType(mt),
-		"TypeRef":          "app." + codegen.GoTypeRef(mt, 1),
+		"TypeRef":          typeref,
 	}
 }
 

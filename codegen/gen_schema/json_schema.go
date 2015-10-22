@@ -205,8 +205,12 @@ func GenerateResourceDefinition(api *design.APIDefinition, r *design.ResourceDef
 				TargetSchema: targetSchema,
 				MediaType:    identifier,
 			}
-			if i == 0 && a.Parent.CanonicalAction().Name == a.Name {
-				link.Rel = "self"
+			if i == 0 {
+				if ca := a.Parent.CanonicalAction(); ca != nil {
+					if ca.Name == a.Name {
+						link.Rel = "self"
+					}
+				}
 			}
 			s.Links = append(s.Links, &link)
 		}
